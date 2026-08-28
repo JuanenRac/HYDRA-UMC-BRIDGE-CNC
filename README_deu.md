@@ -42,3 +42,10 @@ Hardware-/Software-Integrationsschritt und keine Zusage dieses lokalen Kerns.
 
 Version `0.0.1` stellt einen lokal getesteten ausfallsicheren Koordinator
 bereit. Keine reale CNC, kein HAL-Pin und kein Roboter wurde angesteuert.
+
+## ⚙️ Versionierter Build
+
+`build-test.bat` / `build-test.sh` validieren ohne das Repository zu ändern.
+`build.bat` / `build.sh` führen zuerst diese Validierung aus und
+synchronisieren nur bei Erfolg native Version, Manifest und `CHANGELOG.md`.
+Vor einer validierten Steuerungsintegration gibt es keinen CNC-`run`-Befehl.

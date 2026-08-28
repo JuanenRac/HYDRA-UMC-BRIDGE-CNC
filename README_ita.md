@@ -47,3 +47,10 @@ nucleo locale.
 La versione `0.0.1` fornisce un coordinatore locale testato e sicuro per
 impostazione predefinita. Non sono stati azionati una CNC reale, un pin HAL o
 un robot.
+
+## ⚙️ Build con versione
+
+`build-test.bat` / `build-test.sh` convalidano senza modificare il repository.
+`build.bat` / `build.sh` eseguono prima tale convalida e, solo se riesce,
+sincronizzano versione nativa, manifesto e `CHANGELOG.md`. Non esiste un
+comando `run` CNC prima di una convalida con il controllore.

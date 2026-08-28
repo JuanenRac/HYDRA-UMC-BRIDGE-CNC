@@ -44,3 +44,10 @@ de integración de hardware/software, no una afirmación de este núcleo local.
 
 La versión `0.0.1` proporciona un coordinador seguro por defecto probado en
 local. No se ha accionado una CNC real, un pin HAL ni un robot.
+
+## ⚙️ Compilación con versión
+
+`build-test.bat` / `build-test.sh` validan sin modificar el repositorio.
+`build.bat` / `build.sh` ejecutan primero esa validación y, solo si es
+correcta, sincronizan la versión nativa, el manifiesto y `CHANGELOG.md`. No
+existe un comando `run` de CNC hasta validar la integración con un controlador.
