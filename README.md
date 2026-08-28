@@ -6,6 +6,8 @@ GPL-3.0-or-later - see LICENSE
 
 # HYDRA-UMC-BRIDGE-CNC
 
+🇺🇸 **English** | 🇪🇸 [Español](README_spa.md) | 🇫🇷 [Français](README_fra.md) | 🇮🇹 [Italiano](README_ita.md) | 🇩🇪 [Deutsch](README_deu.md) | 🇨🇳 [简体中文](README_zho.md) | 🇯🇵 [日本語](README_jpn.md)
+
 High-level bridge for CNC cells and HYDRA-UMC robot auxiliaries: loading,
 unloading, part handling and supervised auxiliary tasks. It never becomes a
 real-time trajectory controller.
