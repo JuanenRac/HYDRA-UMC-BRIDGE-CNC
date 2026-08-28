@@ -37,3 +37,9 @@ Windows 运行 `build-test.bat`，Linux 运行 `bash build-test.sh`。该测试�
 ## 状态
 
 版本 `0.0.1` 提供本地测试的默认安全协调器。尚未驱动真实 CNC、HAL 引脚或机器人。
+
+## ⚙️ 版本化构建
+
+`build-test.bat` / `build-test.sh` 只验证，不修改仓库。`build.bat` /
+`build.sh` 先运行该验证，只有成功后才同步原生包版本、清单和 `CHANGELOG.md`。
+在控制器集成验证前，不提供 CNC `run` 命令。

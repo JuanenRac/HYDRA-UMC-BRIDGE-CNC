@@ -42,3 +42,10 @@ step, not a claim made by this local core.
 
 Version `0.0.1` provides a locally tested fail-safe coordinator. No real CNC,
 HAL pin or robot has been driven.
+
+## ⚙️ Versioned Build
+
+`build-test.bat` / `build-test.sh` validate without modifying the repository.
+`build.bat` / `build.sh` run that validation first and, only on success,
+synchronize the native package version, manifest and `CHANGELOG.md`. There is
+no live CNC `run` command until a controller integration is validated.

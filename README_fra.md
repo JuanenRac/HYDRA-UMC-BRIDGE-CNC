@@ -44,3 +44,10 @@ d'intégration matériel/logiciel, pas une promesse de ce noyau local.
 
 La version `0.0.1` fournit un coordinateur local testé et sûr par défaut.
 Aucune CNC réelle, broche HAL ni robot n'a été piloté.
+
+## ⚙️ Compilation versionnée
+
+`build-test.bat` / `build-test.sh` valident sans modifier le dépôt.
+`build.bat` / `build.sh` exécutent d'abord cette validation puis, uniquement
+en cas de succès, synchronisent version native, manifeste et `CHANGELOG.md`.
+Il n'existe pas de commande `run` CNC avant une intégration contrôleur réelle.

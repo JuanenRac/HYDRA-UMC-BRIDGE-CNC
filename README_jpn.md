@@ -42,3 +42,10 @@ Windows では `build-test.bat`、Linux では `bash build-test.sh` を実行し
 
 バージョン `0.0.1` はローカルテスト済みのフェイルセーフコーディネーターを
 提供します。実際の CNC、HAL ピン、ロボットはまだ駆動していません。
+
+## ⚙️ バージョン付きビルド
+
+`build-test.bat` / `build-test.sh` はリポジトリを変更せず検証します。
+`build.bat` / `build.sh` は最初にその検証を実行し、成功した場合のみネイティブ
+パッケージ版、マニフェスト、`CHANGELOG.md` を同期します。コントローラー統合の
+検証前に CNC `run` コマンドはありません。
