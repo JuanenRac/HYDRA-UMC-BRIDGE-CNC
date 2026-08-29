@@ -21,6 +21,8 @@ class CncSnapshot:
     def machine_state(self) -> MachineState:
         if self.estop or not self.door_closed:
             return MachineState.SAFE_STOP
+        if not isinstance(self.controller_state, str):
+            return MachineState.OFFLINE
         state = self.controller_state.upper()
         if state == "IDLE":
             return MachineState.IDLE
