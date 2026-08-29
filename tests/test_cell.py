@@ -25,5 +25,9 @@ class CncCellTests(unittest.TestCase):
         decision = CncCellBridge().plan(job(JobPhase.ABORT), CellState.SAFE_STOP, CncSnapshot("RUN", True, True))
         self.assertTrue(decision.allowed)
 
+    def test_non_text_controller_state_fails_safe_instead_of_crashing(self):
+        state = CncSnapshot(None, False, True).machine_state()  # type: ignore[arg-type]
+        self.assertEqual(state, MachineState.OFFLINE)
+
 
 if __name__ == "__main__": unittest.main()
