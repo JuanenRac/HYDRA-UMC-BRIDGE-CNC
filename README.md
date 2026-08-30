@@ -32,6 +32,7 @@ It belongs to the **External Automation Bridges** family: a set of sibling repos
 * ✅ **Real fail-safe cell snapshot:** `cell.py`'s `CncSnapshot.machine_state()` checks E-STOP and door state *before* looking at anything the controller reports — an asserted E-STOP or an open door always resolves to `SAFE_STOP`, regardless of what `controller_state` says. *(implemented, tested in `tests/test_cell.py`)*
 * ✅ **Real shared safety gate:** every observed job is re-evaluated through `evaluate_job()` from `HYDRA-UMC-SDK`'s `bridge_contract`, the same gate every sibling bridge and HYDRA-UMC-SERVER use. *(implemented)*
 * ✅ **Conservative state mapping:** only `IDLE` is treated as idle; `RUN`/`RUNNING`/`HOLD` map to `RUNNING`, `FAULT`/`ERROR`/`OFF` map to `FAULT`, and anything unrecognized falls back to `OFFLINE` — never to a state that would allow productive work. *(implemented)*
+* ✅ **Read-only controller evidence:** `observation.py` strictly normalizes local mapping evidence and supplied GRBL status lines; omitted or non-Boolean E-STOP/door signals fail closed. It opens no controller connection. *(implemented, tested in `tests/test_observation.py`)*
 * ✅ **Non-mutating build/test:** `build-test.bat`/`.sh` compile the source and run the deterministic safety-gate test suite without touching version files or CHANGELOG. *(implemented, see BUILD & RUN below)*
 * 🔜 **LinuxCNC HAL adapter** — deferred; no real CNC controller, HAL pin or robot has been driven yet. *(planned)*
 
@@ -57,6 +58,8 @@ flowchart LR
 * **Why the LinuxCNC HAL adapter is not in this repo yet.** Wiring real HAL pins is a hardware/software integration step that has to be validated against an actual controller; claiming it here before that validation would be a claim this local core cannot back up.
 * **How this fits the rest of the ecosystem.** BRIDGE-CNC sits between the CNC controller and `HYDRA-UMC-SDK` → `HYDRA-UMC-SERVER` → MCU/cell safety — it coordinates auxiliary robot work around the CNC, it does not replace or override the controller's own safety authority.
 
+The observation helpers are evidence normalizers, not controller adapters: they do not open HAL, serial or network links. [Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) defines the validation required before a real controller integration.
+
 ---
 
 ## 📂 DIRECTORY STRUCTURE
@@ -66,9 +69,11 @@ HYDRA-UMC-BRIDGE-CNC/
 ├── src/
 │   └── hydra_umc_bridge_cnc/
 │       ├── __init__.py
-│       └── cell.py              # CncSnapshot + CncCellBridge safety gate
+│       ├── cell.py              # CncSnapshot + CncCellBridge safety gate
+│       └── observation.py       # Read-only mapping and GRBL status normalization
 ├── tests/
-│   └── test_cell.py             # Safe-idle admission, open-door rejection, abort forwarding
+│   ├── test_cell.py             # Safe-idle admission, open-door rejection, abort forwarding
+│   └── test_observation.py      # Missing safety evidence fails closed
 ├── tools/
 │   ├── build_test.py            # Non-mutating compile + test runner (build-test.bat/.sh)
 │   └── bump_version.py          # Synchronizes pyproject.toml, manifest and CHANGELOG.md
@@ -104,7 +109,7 @@ bash build.sh
 
 ## ✅ Current Status & Next Steps
 
-**Real today:** version `0.0.2`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, a deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
+**Real today:** version `0.0.4`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, strict read-only controller-evidence normalization, an nine-test deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
 
 **Integration boundary:** the CNC controller (LinuxCNC or another) retains trajectory, spindle and machine-limit authority at all times; this bridge only ever gates *auxiliary* robot work, never controller motion.
 
@@ -145,14 +150,3 @@ This project is part of a larger robotics ecosystem by the same author (JuanenRa
 
 ## 📜 LICENSE
 GPL-3.0 - See LICENSE for details.
-
-## 🛠️ BUILD & RUN
-
-Use the non-versioning build check before a release build:
-
-| Action | Windows | Linux / macOS |
-|---|---|---|
-| Build check (no version or CHANGELOG change) | `build-test.bat` | `./build-test.sh` |
-| Run / development (when provided) | `run*.bat` or `dev*.bat` | `./run*.sh` or `./dev*.sh` |
-
-`build-test.bat` and `build-test.sh` compile or validate the project stack without incrementing `hydra-umc.project.json` or modifying `CHANGELOG.md`. They may create normal compiler output only. Existing `build*.bat`, `build*.sh`, `run*` and `dev*` scripts retain their project-specific, versioned or runtime behavior; use them when that behavior is required.

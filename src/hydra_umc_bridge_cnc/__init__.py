@@ -6,5 +6,6 @@
 """Safe high-level CNC cell coordination; never a real-time motion driver."""
 
 from .cell import CncCellBridge, CncSnapshot
+from .observation import snapshot_from_grbl_status, snapshot_from_mapping
 
-__all__ = ["CncCellBridge", "CncSnapshot"]
+__all__ = ["CncCellBridge", "CncSnapshot", "snapshot_from_mapping", "snapshot_from_grbl_status"]

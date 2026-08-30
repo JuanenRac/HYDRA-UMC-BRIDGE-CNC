@@ -2,13 +2,14 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-BRIDGE-CNC",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "role": "service",
   "stack": "python",
   "technologies": [
     "Python",
     "LinuxCNC",
     "G-code",
+    "GRBL status evidence",
     "HYDRA-UMC-SDK"
   ],
   "deployment_target": "cm5",
@@ -16,7 +17,7 @@
   "family": "External Automation Bridges",
   "parent": "HYDRA-UMC-SERVER",
   "build": "python tools/build_test.py",
-  "notes": "High-level CNC cell coordinator. LinuxCNC or another controller retains real-time trajectory, limits, spindle and safety authority.",
+  "notes": "High-level CNC cell coordinator. It normalizes read-only controller evidence; LinuxCNC or another controller retains real-time trajectory, limits, spindle and safety authority.",
   "native_version": {
     "file": "pyproject.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
