@@ -6,11 +6,30 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
-## Unreleased
+## [0.0.5] - Real GRBL Alarm/Jog/Home/Hold/Door states
 
 - Added a read-only MTConnect execution normalizer for saved controller
   evidence. Known execution states map into the SDK gate; unknown values and
   missing independent safeguards remain fail-safe/offline.
+- **`cell.py`** - `CncSnapshot.machine_state()` now recognizes GRBL v1.1's
+  full real status-report vocabulary, researched against
+  [github.com/gnea/grbl/wiki/Grbl-v1.1-Interface](https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface):
+  `Jog`/`Home` (real active-motion states, previously swallowed by the
+  `OFFLINE` fallback) now map to `RUNNING`; `Alarm` (GRBL's own most
+  safety-critical report - limit trip, lost position, unresolved E-STOP,
+  also previously indistinguishable from "not reporting") now maps to
+  `FAULT`; `Door` (GRBL's own real safety-interlock state) now maps to
+  `SAFE_STOP` as a defensive second signal alongside this bridge's
+  existing `door_closed` input.
+- `Hold` (and MTConnect's `FEED_HOLD`/`INTERRUPTED`, which already
+  normalized to the same `"HOLD"` token) now correctly maps to `HOLDING`
+  instead of `RUNNING` - a paused program is a real, distinct condition
+  from an actively running one, matching the same real
+  `print_stats.state=paused` -> `HOLDING` fix already made in the sibling
+  PRINTER3D bridge. This does not change any dispatch decision
+  (`evaluate_job()` only permits productive work on `IDLE` either way),
+  only the accuracy of the reported state.
+- 6 new/updated regression tests - 16/16 tests passing.
 
 ## [0.0.4] - 2026-08-30
 

@@ -36,6 +36,15 @@ class CncObservationTests(unittest.TestCase):
         self.assertEqual(snapshot_from_mtconnect_execution("UNKNOWN", estop=False, door_closed=True).machine_state(), MachineState.OFFLINE)
         self.assertEqual(snapshot_from_mtconnect_execution("READY", estop=False, door_closed="true").machine_state(), MachineState.SAFE_STOP)
 
+    def test_mtconnect_feed_hold_and_interrupted_map_to_holding_not_running(self):
+        # MTConnect's real FEED_HOLD/INTERRUPTED executions mean the
+        # program is intentionally paused, not actively running - matching
+        # the same real GRBL Hold -> HOLDING fix in cell.py.
+        for execution in ("FEED_HOLD", "INTERRUPTED"):
+            with self.subTest(execution=execution):
+                snapshot = snapshot_from_mtconnect_execution(execution, estop=False, door_closed=True)
+                self.assertEqual(snapshot.machine_state(), MachineState.HOLDING)
+
     def test_offline_cli_reads_saved_evidence_without_controller_connection(self):
         root = Path(__file__).resolve().parent.parent
         with tempfile.TemporaryDirectory() as directory:

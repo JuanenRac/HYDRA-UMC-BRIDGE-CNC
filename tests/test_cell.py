@@ -29,5 +29,37 @@ class CncCellTests(unittest.TestCase):
         state = CncSnapshot(None, False, True).machine_state()  # type: ignore[arg-type]
         self.assertEqual(state, MachineState.OFFLINE)
 
+    def test_real_grbl_jog_and_home_states_are_recognized_as_active_motion(self):
+        # Real GRBL v1.1 status-report tokens (github.com/gnea/grbl/wiki/
+        # Grbl-v1.1-Interface) - a machine jogging or homing is exactly as
+        # busy as one running a program; both were previously swallowed by
+        # the OFFLINE fallback, indistinguishable from "not reporting".
+        for token in ("Jog", "Home"):
+            with self.subTest(token=token):
+                self.assertEqual(CncSnapshot(token, False, True).machine_state(), MachineState.RUNNING)
+
+    def test_real_grbl_hold_state_maps_to_holding_not_running(self):
+        # GRBL's real "Hold" means execution is intentionally paused (feed
+        # hold), a distinct condition from actively running - matching the
+        # real print_stats.state=paused -> HOLDING fix already made in the
+        # sibling PRINTER3D bridge.
+        self.assertEqual(CncSnapshot("Hold", False, True).machine_state(), MachineState.HOLDING)
+
+    def test_real_grbl_alarm_state_is_a_fault_not_a_generic_offline_fallback(self):
+        # GRBL's real "Alarm" state (limit trip, lost position, unresolved
+        # E-STOP) is its most safety-critical report - it must be
+        # distinguishable from "controller not reporting at all".
+        self.assertEqual(CncSnapshot("Alarm", False, True).machine_state(), MachineState.FAULT)
+
+    def test_real_grbl_door_state_is_a_safe_stop(self):
+        # GRBL's own real safety-interlock state; this bridge's separate
+        # door_closed input already forces SAFE_STOP, so this is a
+        # defensive second signal confirming the same real condition.
+        self.assertEqual(CncSnapshot("Door", False, True).machine_state(), MachineState.SAFE_STOP)
+
+    def test_holding_cnc_does_not_permit_new_productive_work(self):
+        decision = CncCellBridge().plan(job(), CellState.READY, CncSnapshot("Hold", False, True))
+        self.assertFalse(decision.allowed)
+
 
 if __name__ == "__main__": unittest.main()

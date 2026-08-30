@@ -10,6 +10,8 @@ GPL-3.0-or-later - see LICENSE
 
 `CncSnapshot` makes a CNC state usable by the shared SDK gate only after independent E-STOP and door evidence are present. `observation.py` normalizes an already-saved mapping or supplied GRBL status line. Missing or non-Boolean E-STOP/door values fail closed. The bridge coordinates auxiliary loading/unloading; it does not control trajectory, spindle, axes or G-code.
 
+`CncSnapshot.machine_state()` recognizes GRBL v1.1's real full status vocabulary (github.com/gnea/grbl/wiki/Grbl-v1.1-Interface): `Idle` -> `IDLE`; `Run`/`Jog`/`Home` -> `RUNNING` (all three are real active-motion states); `Hold` -> `HOLDING` (a paused program, distinct from actively running); `Alarm`/`Fault`/`Error`/`Off` -> `FAULT`; `Door` -> `SAFE_STOP` (a defensive second signal alongside the bridge's own independent `door_closed` input). Any other token, including GRBL's `Check`/`Sleep`, stays `OFFLINE` - the same conservative fail-safe default used for every unrecognized signal in this bridge.
+
 ## Compatible software
 
 The current parser accepts generic controller-state evidence, the leading state token of a supplied GRBL status line, and saved MTConnect `execution` values (`READY`/`STOPPED`, `ACTIVE`/`EXECUTING`, `FEED_HOLD`/`INTERRUPTED`, `FAULT`). MTConnect is read-only evidence only: it neither opens a controller connection nor offers a command path. LinuxCNC/HAL is an intended future controller integration, but is not connected today. Other controllers can be supported only through a documented read-only adapter that preserves independent guard and E-STOP signals.
