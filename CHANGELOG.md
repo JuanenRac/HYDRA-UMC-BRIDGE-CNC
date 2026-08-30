@@ -6,6 +6,12 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## Unreleased
+
+- Added a read-only MTConnect execution normalizer for saved controller
+  evidence. Known execution states map into the SDK gate; unknown values and
+  missing independent safeguards remain fail-safe/offline.
+
 ## [0.0.4] - 2026-08-30
 
 - Added `docs/BRIDGE_GUIDE.md`, defining evidence scope, controller

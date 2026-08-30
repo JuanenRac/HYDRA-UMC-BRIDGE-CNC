@@ -12,7 +12,7 @@ GPL-3.0-or-later - see LICENSE
 
 ## Compatible software
 
-The current parser accepts generic controller-state evidence and the leading state token of a supplied GRBL status line. LinuxCNC/HAL is an intended future controller integration, but is not connected today. Other controllers can be supported only through a documented read-only adapter that preserves independent guard and E-STOP signals.
+The current parser accepts generic controller-state evidence, the leading state token of a supplied GRBL status line, and saved MTConnect `execution` values (`READY`/`STOPPED`, `ACTIVE`/`EXECUTING`, `FEED_HOLD`/`INTERRUPTED`, `FAULT`). MTConnect is read-only evidence only: it neither opens a controller connection nor offers a command path. LinuxCNC/HAL is an intended future controller integration, but is not connected today. Other controllers can be supported only through a documented read-only adapter that preserves independent guard and E-STOP signals.
 
 ## Scripts and verification
 

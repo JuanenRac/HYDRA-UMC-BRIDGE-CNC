@@ -38,3 +38,24 @@ def snapshot_from_grbl_status(status_line: object, *, estop: object, door_closed
     if isinstance(status_line, str) and status_line.startswith("<") and "|" in status_line:
         state = status_line[1 : status_line.index("|")]
     return CncSnapshot(state, _strict_bool(estop, True), _strict_bool(door_closed, False))
+
+
+def snapshot_from_mtconnect_execution(execution: object, *, estop: object, door_closed: object) -> CncSnapshot:
+    """Normalize saved MTConnect execution evidence without opening a controller.
+
+    MTConnect is a read-only compatibility input here, not a command channel.
+    Unknown or unavailable execution values remain ``OFFLINE`` so a caller
+    cannot mistake partial telemetry for an idle, safe machine.
+    """
+
+    state_map = {
+        "READY": "IDLE",
+        "STOPPED": "IDLE",
+        "ACTIVE": "RUNNING",
+        "EXECUTING": "RUNNING",
+        "FEED_HOLD": "HOLD",
+        "INTERRUPTED": "HOLD",
+        "FAULT": "FAULT",
+    }
+    state = state_map.get(execution.upper(), "") if isinstance(execution, str) else ""
+    return CncSnapshot(state, _strict_bool(estop, True), _strict_bool(door_closed, False))

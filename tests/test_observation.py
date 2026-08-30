@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 from hydra_umc_sdk.bridge_contract import MachineState
-from hydra_umc_bridge_cnc.observation import snapshot_from_grbl_status, snapshot_from_mapping
+from hydra_umc_bridge_cnc.observation import snapshot_from_grbl_status, snapshot_from_mapping, snapshot_from_mtconnect_execution
 
 
 class CncObservationTests(unittest.TestCase):
@@ -29,6 +29,12 @@ class CncObservationTests(unittest.TestCase):
 
     def test_malformed_status_fails_offline_when_safeguards_are_present(self):
         self.assertEqual(snapshot_from_grbl_status("Idle", estop=False, door_closed=True).machine_state(), MachineState.OFFLINE)
+
+    def test_mtconnect_execution_is_normalized_read_only_and_fails_closed(self):
+        self.assertEqual(snapshot_from_mtconnect_execution("EXECUTING", estop=False, door_closed=True).machine_state(), MachineState.RUNNING)
+        self.assertEqual(snapshot_from_mtconnect_execution("READY", estop=False, door_closed=True).machine_state(), MachineState.IDLE)
+        self.assertEqual(snapshot_from_mtconnect_execution("UNKNOWN", estop=False, door_closed=True).machine_state(), MachineState.OFFLINE)
+        self.assertEqual(snapshot_from_mtconnect_execution("READY", estop=False, door_closed="true").machine_state(), MachineState.SAFE_STOP)
 
     def test_offline_cli_reads_saved_evidence_without_controller_connection(self):
         root = Path(__file__).resolve().parent.parent
