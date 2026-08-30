@@ -23,7 +23,15 @@ class CncSnapshot:
             return MachineState.SAFE_STOP
         if not isinstance(self.controller_state, str):
             return MachineState.OFFLINE
-        state = self.controller_state.upper()
+        # Real GRBL v1.1 status reports append a numeric substate to Hold
+        # and Door (e.g. "Hold:0"/"Hold:1", "Door:0".."Door:3" - see
+        # github.com/gnea/grbl/wiki/Grbl-v1.1-Interface#---current-status),
+        # never bare "Hold"/"Door" - a real controller connected over the
+        # serial transport would always send the suffixed form, which the
+        # exact-match checks below would otherwise silently miss and fall
+        # through to OFFLINE. Splitting off the substate here is safe for
+        # every other token too, since none of them use a colon.
+        state = self.controller_state.upper().split(":")[0]
         if state == "IDLE":
             return MachineState.IDLE
         # Real GRBL v1.1 status-report state tokens (researched against

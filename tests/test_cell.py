@@ -61,5 +61,19 @@ class CncCellTests(unittest.TestCase):
         decision = CncCellBridge().plan(job(), CellState.READY, CncSnapshot("Hold", False, True))
         self.assertFalse(decision.allowed)
 
+    def test_real_grbl_hold_and_door_substates_are_recognized_not_just_the_bare_token(self):
+        # A real GRBL controller ALWAYS sends a numeric substate suffix for
+        # Hold/Door (github.com/gnea/grbl/wiki/Grbl-v1.1-Interface#---
+        # current-status) - "Hold:0"/"Hold:1", "Door:0".."Door:3" - never
+        # the bare token. A real bug found while wiring up the real serial
+        # transport: the exact-match checks silently missed the suffixed
+        # form entirely and fell through to OFFLINE.
+        for token in ("Hold:0", "Hold:1"):
+            with self.subTest(token=token):
+                self.assertEqual(CncSnapshot(token, False, True).machine_state(), MachineState.HOLDING)
+        for token in ("Door:0", "Door:1", "Door:2", "Door:3"):
+            with self.subTest(token=token):
+                self.assertEqual(CncSnapshot(token, False, True).machine_state(), MachineState.SAFE_STOP)
+
 
 if __name__ == "__main__": unittest.main()

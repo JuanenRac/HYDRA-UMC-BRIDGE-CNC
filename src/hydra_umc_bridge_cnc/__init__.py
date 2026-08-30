@@ -7,6 +7,13 @@
 
 from .cell import CncCellBridge, CncSnapshot
 from .observation import snapshot_from_grbl_status, snapshot_from_mapping, snapshot_from_mtconnect_execution
+from .serial_transport import (
+    GrblRealtimeControl,
+    GrblSerialProbe,
+    RealtimeCommandResult,
+    SerialLike,
+    open_serial_port,
+)
 
 __all__ = [
     "CncCellBridge",
@@ -14,4 +21,9 @@ __all__ = [
     "snapshot_from_mapping",
     "snapshot_from_grbl_status",
     "snapshot_from_mtconnect_execution",
+    "GrblSerialProbe",
+    "GrblRealtimeControl",
+    "RealtimeCommandResult",
+    "SerialLike",
+    "open_serial_port",
 ]

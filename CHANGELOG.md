@@ -6,6 +6,36 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.0.6] - Real GRBL serial transport (pre-real: connected, not simulated)
+
+- **`serial_transport.py`** (new) - this bridge's first real transport:
+  `GrblSerialProbe.query_status()` sends GRBL's real-time status query byte
+  (`?`) over an already-open serial connection and parses the real response
+  through the existing `snapshot_from_grbl_status()`. `GrblRealtimeControl`
+  sends only GRBL's own real-time single-byte control characters
+  (researched against
+  [github.com/gnea/grbl/wiki/Grbl-v1.1-Interface](https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface#real-time-commands)):
+  `feed_hold()`/`soft_reset()` are always allowed (same de-escalation
+  reasoning as `ABORT`/`HOLD_POSITION` elsewhere); `cycle_start_resume()`
+  uses a standalone gate requiring a genuinely `HOLDING` machine (same
+  reasoning as the sibling PRINTER3D bridge's `resume_job()`). This never
+  streams a G-code program - LinuxCNC/the native controller keeps all
+  real-time trajectory, limits, spindle and safety authority, unchanged.
+  `open_serial_port()` is the one place `pyserial` (new optional
+  `[serial]` extra) is imported, lazily, degrading to a clear
+  `RuntimeError` instead of a bare `ImportError` when it isn't installed.
+- **Real bug found while wiring this up, fixed in `cell.py`**: a real GRBL
+  controller always sends a numeric substate suffix for `Hold`/`Door`
+  (`Hold:0`/`Hold:1`, `Door:0`..`Door:3`), never the bare token - the
+  existing exact-match state check silently missed the suffixed form
+  entirely and fell through to `OFFLINE`. Fixed by splitting off the
+  substate before comparison; safe for every other token too since none of
+  them use a colon.
+- 15 new regression tests (serial transport, against an in-memory fake
+  connection - no OS pty/socat/hardware needed; plus the real Hold/Door
+  substate fix) - 28/28 tests passing (1 skipped when pyserial happens to
+  be installed, proving the lazy-import failure path only when it isn't).
+
 ## [0.0.5] - Real GRBL Alarm/Jog/Home/Hold/Door states
 
 - Added a read-only MTConnect execution normalizer for saved controller

@@ -8,10 +8,17 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "hydra-umc-bridge-cnc"
-version = "0.0.5"
+version = "0.0.6"
 description = "Fail-safe HYDRA-UMC CNC coordination boundary"
 requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
 dependencies = ["hydra-umc-sdk @ git+https://github.com/JuanenRac/HYDRA-UMC-SDK.git@main#subdirectory=clients/python"]
+
+[project.optional-dependencies]
+# Only open_serial_port() needs this - it's imported lazily (see
+# serial_transport.py's own comment) so the rest of the package, including
+# every safety-relevant parsing/gating test, works without it installed.
+serial = ["pyserial>=3.5"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
