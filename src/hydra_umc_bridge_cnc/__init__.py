@@ -6,6 +6,7 @@
 """Safe high-level CNC cell coordination; never a real-time motion driver."""
 
 from .cell import CncCellBridge, CncSnapshot
+from .mqtt_transport import CncMqttBridge, MqttPublish, run_forever
 from .observation import snapshot_from_grbl_status, snapshot_from_mapping, snapshot_from_mtconnect_execution
 from .serial_transport import (
     GrblRealtimeControl,
@@ -26,4 +27,7 @@ __all__ = [
     "RealtimeCommandResult",
     "SerialLike",
     "open_serial_port",
+    "CncMqttBridge",
+    "MqttPublish",
+    "run_forever",
 ]

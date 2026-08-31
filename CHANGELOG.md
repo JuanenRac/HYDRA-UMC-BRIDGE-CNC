@@ -6,6 +6,24 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.0.7] - Real MQTT transport over the real broker
+
+- **`mqtt_transport.py`** (new) - reaches this bridge's already-real logic
+  (`GrblRealtimeControl.feed_hold`/`soft_reset`/`cycle_start_resume`,
+  `CncCellBridge.plan`) over `HYDRA-UMC-MQTT-BROKER`, per the ecosystem's
+  own "MQTT via the real broker, real commands included" decision -
+  `hydra/bridges/cnc/cmd/{status,feed_hold,soft_reset,cycle_start_resume,
+  job}` in, `hydra/bridges/cnc/state` (retained) and `.../cmd/<verb>/result`
+  out. `CncMqttBridge.handle_message()` is a pure(ish) topic dispatcher over
+  an already-open `SerialLike` connection - fully testable with the same
+  in-memory fake `test_serial_transport.py` already uses, no real broker or
+  serial port required. Adds no new physical authority: every command sent
+  is one `serial_transport.py`/`cell.py` already implemented, and the same
+  real-time-only boundary (never streams G-code) applies unchanged.
+  `run_forever()` is the thin real-I/O glue, lazily importing the new
+  optional `paho-mqtt` dependency the same way `open_serial_port()` already
+  lazily imports `pyserial`. 14 new tests.
+
 ## [0.0.6] - Real GRBL serial transport (pre-real: connected, not simulated)
 
 - **`serial_transport.py`** (new) - this bridge's first real transport:
