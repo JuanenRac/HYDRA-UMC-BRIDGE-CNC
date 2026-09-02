@@ -68,12 +68,23 @@ HYDRA-UMC-BRIDGE-CNC/
 ├── src/
 │   └── hydra_umc_bridge_cnc/
 │       ├── __init__.py
-│       └── cell.py              # Portail de sécurité CncSnapshot + CncCellBridge
+│       ├── cell.py              # Portail de sécurité CncSnapshot + CncCellBridge
+│       ├── observation.py       # Mappage en lecture seule et normalisation de l'état GRBL
+│       ├── serial_transport.py  # Transport série GRBL réel et fail-closed - uniquement requêtes d'état et octets de contrôle temps réel
+│       └── mqtt_transport.py    # Transport MQTT réel du broker pour la logique déjà réelle de ce bridge
 ├── tests/
-│   └── test_cell.py             # Admission en repos sûr, rejet porte ouverte, transmission d'abandon
+│   ├── test_cell.py             # Admission en repos sûr, rejet porte ouverte, transmission d'abandon
+│   ├── test_observation.py      # Une preuve de sécurité manquante échoue en fail-closed
+│   ├── test_serial_transport.py # Transport série réel contre un port simulé, incl. chemins fail-closed
+│   └── test_mqtt_transport.py   # Tests de forme commande/état MQTT contre un client broker simulé
 ├── tools/
 │   ├── build_test.py            # Compilateur + lanceur de tests non mutant (build-test.bat/.sh)
 │   └── bump_version.py          # Synchronise pyproject.toml, manifeste et CHANGELOG.md
+├── docs/
+│   ├── BRIDGE_GUIDE.md                    # Portée, plateformes compatibles, scripts, portail d'acceptation matérielle
+│   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # Ce qui compte comme preuve de sécurité réelle et ce que ce bridge refuse de déduire
+├── images/
+│   └── HYDRA_UMC_BANNER.svg     # Bannière du README
 ├── build-test.bat / build-test.sh  # Valide uniquement, ne modifie jamais le dépôt
 ├── build.bat / build.sh            # Valide puis, si succès, incrémente version + CHANGELOG
 ├── pyproject.toml               # Métadonnées du paquet ; dépend de HYDRA-UMC-SDK (git)
