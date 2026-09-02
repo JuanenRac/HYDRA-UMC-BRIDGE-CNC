@@ -32,6 +32,8 @@ GPL-3.0-or-later - see LICENSE
 * ✅ **真实的故障安全单元快照:** `cell.py` 中的 `CncSnapshot.machine_state()` 会先检查急停(E-STOP)和门状态,*然后*才查看控制器上报的任何内容 —— 只要急停被触发或门未关闭,状态始终解析为 `SAFE_STOP`,与 `controller_state` 报告的内容无关。*(已实现,并在 `tests/test_cell.py` 中测试)*
 * ✅ **真实的共享安全门控:** 每个被观察到的任务都会通过 `HYDRA-UMC-SDK` 的 `bridge_contract` 中的 `evaluate_job()` 重新评估,这与所有兄弟桥接以及 HYDRA-UMC-SERVER 使用的是同一个门控。*(已实现)*
 * ✅ **保守的状态映射:** 只有 `IDLE` 被视为空闲;`RUN`/`RUNNING`/`HOLD` 映射为 `RUNNING`,`FAULT`/`ERROR`/`OFF` 映射为 `FAULT`,任何无法识别的值都会回落到 `OFFLINE`——绝不会回落到允许生产性工作的状态。*(已实现)*
+* ✅ **只读控制器证据:** `observation.py` 严格规范化本地映射证据和提供的 GRBL 状态行;缺失或非布尔的 E-STOP/门信号会安全失效关闭。*(已实现,在 `tests/test_observation.py` 中测试)*
+* ✅ **真实的 GRBL 串行传输:** `serial_transport.py` 的 `GrblSerialProbe` 打开真实的串行连接并查询 GRBL 的实时状态字节(`?`);`GrblRealtimeControl` 只发送 GRBL 自身的实时控制字节(进给保持、循环恢复、软复位)——`cycle_start_resume()` 仅在机器真正处于 `HOLDING` 状态时才被允许,其他命令则始终允许,如 `ABORT`。它从不流式传输 G-code 程序。*(已实现,在 `tests/test_serial_transport.py` 中测试)*
 * ✅ **非变更式构建/测试:** `build-test.bat`/`.sh` 编译源码并运行安全门控测试套件,不会触碰版本文件或 CHANGELOG。*(已实现,见下方"构建与运行")*
 * 🔜 **LinuxCNC HAL 适配器** —— 尚未实现;目前还没有驱动过真实的 CNC 控制器、HAL 引脚或机器人。*(计划中)*
 
@@ -120,6 +122,7 @@ bash build.sh
 
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** —— 共享的 `bridge_contract` 任务门控,本桥接(以及所有其他桥接)都通过它评估任务。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 本桥接汇报的经过身份验证的协调器。
+- **[HYDRA-UMC-MQTT-BROKER](https://github.com/JuanenRac/HYDRA-UMC-MQTT-BROKER)** —— 为本桥自身的 `hydra/bridges/cnc/...` 主题(状态、jog/reset/resume、共享作业门控)提供的 `mqtt_transport.py` 真实传输 - 详见该仓库自身的 `docs/BRIDGE_TOPICS.md`。
 - **[HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)** —— 面向真实控制器集成的未来硬件在环验证途径。
 
 ### 生态系统的其余部分

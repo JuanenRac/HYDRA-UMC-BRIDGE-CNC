@@ -29,9 +29,11 @@ GPL-3.0-or-later - see LICENSE
 Sie gehört zur Familie **External Automation Bridges**: einer Gruppe von Schwester-Repositories (CNC, LASER, OPENPNP, PRINTER3D, ROS2), die alle denselben gemeinsamen Sicherheitsvertrag von `HYDRA-UMC-SDK` sprechen, sodass keine Brücke ihre eigene Definition von "sicher zum Arbeiten" erfinden kann.
 
 ### Kernfunktionen:
-* ✅ **Echter ausfallsicherer Zellen-Snapshot:** `cell.py` — `CncSnapshot.machine_state()` prüft E-STOP und Türzustand, *bevor* überhaupt betrneunet wird, was der Controller meldet; ein ausgelöster E-STOP oder eine offene Tür führen immer zu `SAFE_STOP`, unabhängig davon, was `controller_state` sagt. *(implementiert, getestet in `tests/test_cell.py`)*
-* ✅ **Echtes gemeinsames Sicherheitsgatter:** jeder beobneunete Auftrag wird über `evaluate_job()` aus dem `bridge_contract` von `HYDRA-UMC-SDK` neu bewertet — demselben Gatter, das jede Schwesterbrücke und HYDRA-UMC-SERVER verwenden. *(implementiert)*
+* ✅ **Echter ausfallsicherer Zellen-Snapshot:** `cell.py` — `CncSnapshot.machine_state()` prüft E-STOP und Türzustand, *bevor* überhaupt betrachtet wird, was der Controller meldet; ein ausgelöster E-STOP oder eine offene Tür führen immer zu `SAFE_STOP`, unabhängig davon, was `controller_state` sagt. *(implementiert, getestet in `tests/test_cell.py`)*
+* ✅ **Echtes gemeinsames Sicherheitsgatter:** jeder beobachtete Auftrag wird über `evaluate_job()` aus dem `bridge_contract` von `HYDRA-UMC-SDK` neu bewertet — demselben Gatter, das jede Schwesterbrücke und HYDRA-UMC-SERVER verwenden. *(implementiert)*
 * ✅ **Konservative Zustandsabbildung:** nur `IDLE` wird als Leerlauf behandelt; `RUN`/`RUNNING`/`HOLD` werden auf `RUNNING` abgebildet, `FAULT`/`ERROR`/`OFF` auf `FAULT`, und jeder nicht erkannte Wert fällt auf `OFFLINE` zurück — niemals auf einen Zustand, der produktive Arbeit erlauben würde. *(implementiert)*
+* ✅ **Schreibgeschützte Controller-Evidenz:** `observation.py` normalisiert streng die lokale Mapping-Evidenz und die gelieferten GRBL-Statuszeilen; ausgelassene oder nicht-boolesche E-STOP-/Tür-Signale schlagen sicher fehl. *(implementiert, getestet in `tests/test_observation.py`)*
+* ✅ **Echter GRBL-Serientransport:** `GrblSerialProbe` aus `serial_transport.py` öffnet eine echte serielle Verbindung und fragt das Echtzeit-Statusbyte von GRBL ab (`?`); `GrblRealtimeControl` sendet ausschließlich GRBLs eigene Echtzeit-Steuerbytes (Vorschub-Halt, Zyklus-Fortsetzung, Soft-Reset) — `cycle_start_resume()` ist an eine tatsächlich in `HOLDING` befindliche Maschine gebunden, die übrigen sind immer erlaubt wie `ABORT`. Es streamt niemals ein G-Code-Programm. *(implementiert, getestet in `tests/test_serial_transport.py`)*
 * ✅ **Nicht-mutierender Build/Test:** `build-test.bat`/`.sh` kompilieren den Quellcode und führen die Sicherheitsgatter-Testsuite aus, ohne Versionsdateien oder das CHANGELOG anzufassen. *(implementiert, siehe BUILD & AUSFÜHRUNG unten)*
 * 🔜 **LinuxCNC-HAL-Adapter** — zurückgestellt; es wurde noch keine reale CNC-Steuerung, kein HAL-Pin und kein Roboter angesteuert. *(geplant)*
 
@@ -42,7 +44,7 @@ Sie gehört zur Familie **External Automation Bridges**: einer Gruppe von Schwes
 ```mermaid
 flowchart LR
     CNC["CNC-Steuerung / HAL<br/>(Zustand, E-STOP, Tür)"] --> BRIDGE["BRIDGE-CNC<br/>CncSnapshot.machine_state()"]
-    BRIDGE -- "BridgeJob + beobneuneter MachineState" --> SDK["HYDRA-UMC-SDK<br/>evaluate_job()"]
+    BRIDGE -- "BridgeJob + beobachteter MachineState" --> SDK["HYDRA-UMC-SDK<br/>evaluate_job()"]
     SDK -- GateDecision --> SERVER["HYDRA-UMC-SERVER"]
     SERVER -- "Auftrag / Abbruch" --> MCU["MCU + Zellsicherheit"]
 ```
@@ -120,6 +122,7 @@ Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (J
 
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — das gemeinsame `bridge_contract`-Auftragsgatter, über das diese Brücke (und alle anderen) ihre Aufträge bewertet.
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — der authentifizierte Koordinator, an den diese Brücke berichtet.
+- **[HYDRA-UMC-MQTT-BROKER](https://github.com/JuanenRac/HYDRA-UMC-MQTT-BROKER)** — der echte Transport von `mqtt_transport.py` für die eigenen `hydra/bridges/cnc/...`-Topics dieser Brücke (Status, Jog/Reset/Resume, das gemeinsame Auftragsgatter) - siehe die `docs/BRIDGE_TOPICS.md` dieses Repos.
 - **[HYDRA-UMC-HIL-BRIDGE](https://github.com/JuanenRac/HYDRA-UMC-HIL-BRIDGE)** — künftiger Hardware-in-the-Loop-Nachweispfad für die reale Controller-Integration.
 
 ### Rest des Ökosystems
