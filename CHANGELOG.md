@@ -79,7 +79,7 @@ GPL-3.0-or-later - see LICENSE
   only the accuracy of the reported state.
 - 6 new/updated regression tests - 16/16 tests passing.
 
-## [0.0.4] - 2026-08-30
+## [0.0.4]
 
 - Added `docs/BRIDGE_GUIDE.md`, defining evidence scope, controller
   compatibility, script conventions and the CNC hardware acceptance gate.
@@ -89,7 +89,7 @@ GPL-3.0-or-later - see LICENSE
 - Added CLI contract coverage; the full suite now has nine tests.
 - Synchronized package metadata, ecosystem manifest and all seven README files.
 
-## [0.0.3] - 2026-08-30
+## [0.0.3]
 
 - Added read-only normalization of mapping evidence and supplied GRBL status
   lines; the module opens no serial, HAL or network connection.
@@ -98,7 +98,7 @@ GPL-3.0-or-later - see LICENSE
 - Added four deterministic evidence-boundary tests; the suite now has eight
   tests. Package metadata, manifest and all seven README files are synchronized.
 
-## [0.0.2] - 2026-08-30
+## [0.0.2]
 
 - Made an unexpected non-text controller state fail safe as `OFFLINE` instead
   of raising while evaluating the CNC cell boundary.
