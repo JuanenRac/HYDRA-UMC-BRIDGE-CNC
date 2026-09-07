@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-BRIDGE-CNC",
+  "version": "0.1.0",
+  "role": "service",
+  "stack": "python",
+  "technologies": [
+    "Python",
+    "LinuxCNC",
+    "G-code",
+    "GRBL status evidence",
+    "GRBL serial transport",
+    "HYDRA-UMC-SDK"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "established",
+  "family": "External Automation Bridges",
+  "parent": "HYDRA-UMC-SERVER",
+  "build": "python tools/build_test.py",
+  "notes": "High-level CNC cell coordinator. It normalizes read-only controller evidence and can now query real GRBL status and send GRBL's own real-time control bytes (status query, feed hold, cycle resume, soft reset) over a real serial connection; LinuxCNC or another controller retains real-time trajectory, limits, spindle and safety authority - this never streams a G-code program. Interlocks (door/E-STOP) are always re-read live immediately before cycle_start_resume/a new job is gated - no cached snapshot is ever reused for a real safety decision, and (v0.0.9) the live read itself now happens AFTER the blocking GRBL status query completes, not before it, so a real E-STOP/door event during that query is never missed. A real short/zero-byte serial write is reported as not executed, never as a false success; v0.1.0: this now also requires an exact, real int byte count equal to the command length - a None/bool/mismatched-but-real return value from a non-conforming serial-like implementation is no longer silently trusted as a confirmed write either.",
+  "native_version": {
+    "file": "pyproject.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  }
+}
