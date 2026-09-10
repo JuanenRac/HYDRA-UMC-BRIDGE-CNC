@@ -107,7 +107,7 @@ class CncMqttBridge:
     def refresh_status(self) -> CncSnapshot:
         """Query real GRBL status now.
 
-        CNC-01 (found in an ecosystem-wide software-improvements audit):
+        CNC-01:
         this used to cache its result in `self._last_snapshot` for
         `cycle_start_resume`/`cmd/job` to reuse instead of querying again -
         a real door/E-STOP change between two messages went unnoticed
@@ -118,8 +118,8 @@ class CncMqttBridge:
         than leaving unused dead state a future edit could be tempted to
         read from again.
 
-        REV-005 (found in an independent revalidation audit, a deeper
-        version of the same real gap CNC-01 above already narrowed): the
+        REV-005 (a deeper version of the same real gap CNC-01 above
+        already narrowed): the
         `self._estop`/`self._door_closed` callables are passed straight
         through to `query_status()` rather than called here - GRBL's own
         status query blocks on `readline()` for up to the connection's
@@ -154,8 +154,7 @@ class CncMqttBridge:
             result = self._realtime.soft_reset(self._connection)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)))]
         if suffix == "cmd/cycle_start_resume":
-            # CNC-01 (found in an ecosystem-wide software-improvements
-            # audit): this used to reuse self._last_snapshot - whatever
+            # CNC-01: this used to reuse self._last_snapshot - whatever
             # was last queried, possibly from a `cmd/status` poll seconds
             # or minutes earlier - instead of re-reading the real,
             # current door/E-STOP state right before authorizing a real
@@ -184,7 +183,7 @@ class CncMqttBridge:
         except (json.JSONDecodeError, BridgeError, UnicodeDecodeError) as error:
             decision = {"allowed": False, "reason": f"malformed job payload: {error}"}
             return MqttPublish(f"{TOPIC_PREFIX}cmd/job/result", json.dumps(decision))
-        # CNC-01 (found in an ecosystem-wide software-improvements audit) -
+        # CNC-01 -
         # same real gap as cycle_start_resume above: gating a new job
         # against a stale self._last_snapshot could let a door opened (or
         # E-STOP activated) since the last poll go unnoticed. Always
@@ -205,8 +204,7 @@ def connect_with_retry(
     raises - connection refused, timeout), tolerating the real startup
     race a systemd unit for this bridge hits if it starts before
     HYDRA-UMC-MQTT-BROKER is listening yet (both are independent systemd
-    units with no ordering guarantee across a real reboot - found in an
-    ecosystem-wide software-improvements audit). Only OSError is retried;
+    units with no ordering guarantee across a real reboot). Only OSError is retried;
     anything else is a real bug, not a transient startup race, and
     propagates immediately. `sleep` is injectable so tests can prove the
     retry/give-up behavior without a real multi-second wait."""

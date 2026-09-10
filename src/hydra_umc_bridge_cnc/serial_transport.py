@@ -92,7 +92,7 @@ class GrblSerialProbe:
         estop: Callable[[], object],
         door_closed: Callable[[], object],
     ) -> CncSnapshot:
-        # REV-005 (found in an independent revalidation audit): `estop`/
+        # REV-005: `estop`/
         # `door_closed` are callables, not already-read values, and are
         # deliberately called AFTER the blocking write()/readline() below,
         # never before. `readline()` can block for up to this connection's
@@ -158,13 +158,13 @@ class GrblRealtimeControl:
             written = connection.write(command)
         except OSError as error:
             return RealtimeCommandResult(True, False, f"serial write failed: {error}")
-        # REV-006 (found in an independent revalidation audit): a real
+        # REV-006: a real
         # pyserial connection's write() returns the real number of bytes
         # actually written - a `0`-byte (or short) write raises no
         # exception at all, so it used to be reported as `executed=True`
         # just because nothing crashed.
         #
-        # V07-019 (found in an independent revalidation audit, P2):
+        # V07-019 (P2):
         # REV-006's own fix only caught a reported SHORT count -
         # `None`/`False`/a non-int value (a serial-like implementation
         # that does not conform to pyserial's own real int-byte-count

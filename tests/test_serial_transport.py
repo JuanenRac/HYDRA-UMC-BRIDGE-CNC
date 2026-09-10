@@ -26,7 +26,7 @@ class FakeSerial:
         self.written: list[bytes] = []
         self.closed = False
         self.raise_on_write: OSError | None = None
-        # V07-019 (found in an independent revalidation audit, P2):
+        # V07-019 (P2):
         # defaults to the real pyserial contract - write() reports the
         # real byte count actually written. A test overrides this to a
         # specific (short, or otherwise wrong) value to simulate that
@@ -36,7 +36,7 @@ class FakeSerial:
         # that silently either way, see GrblRealtimeControl._write's own
         # comment. Fixing this fake to report a real count by default
         # (instead of relaxing production for a fake that doesn't) is
-        # the audit's own explicit correction.
+        # an explicit correction.
         self.write_return_value: int | None = None
         self.report_byte_count = True
 
@@ -93,7 +93,7 @@ class GrblSerialProbeTests(unittest.TestCase):
         snapshot = GrblSerialProbe().query_status(connection, estop=lambda: False, door_closed=lambda: True)
         self.assertEqual(snapshot.machine_state(), MachineState.SAFE_STOP)
 
-    # REV-005 regression: a real audit found the interlocks read BEFORE the
+    # REV-005 regression: the interlocks were read BEFORE the
     # blocking write()/readline() below, so a real E-STOP hit or door
     # opened DURING that block went unnoticed by the snapshot this call
     # returns. `FakeSerial` here flips both signals as a side effect of
@@ -166,7 +166,7 @@ class GrblRealtimeControlTests(unittest.TestCase):
         self.assertFalse(result.executed)
         self.assertIn("serial write failed", result.reason)
 
-    # REV-006 regression: a real audit found a real 0-byte write (no
+    # REV-006 regression: a real 0-byte write (no
     # exception raised at all - the connection is fine, nothing actually
     # reached the wire) reported as `executed=True`. For a real stop/reset
     # command this makes the safety evidence itself misleading.
@@ -184,14 +184,14 @@ class GrblRealtimeControlTests(unittest.TestCase):
         result = GrblRealtimeControl().soft_reset(connection)
         self.assertFalse(result.executed)
 
-    # V07-019 (found in an independent revalidation audit, P2): REV-006's
+    # V07-019 (P2): REV-006's
     # own fix only caught a reported SHORT count - `None`/a bool/a
     # mismatched-but-real int were all still silently trusted as a
     # genuine confirmed write, just because nothing crashed. A real
     # pyserial connection's write() always returns the real int byte
     # count - now required exactly, not just "if it happens to look like
     # one". Every real fake in this suite defaults to reporting a real
-    # byte count instead (see FakeSerial's own comment) - the audit's own
+    # byte count instead (see FakeSerial's own comment) - an
     # explicit correction, fixing the fakes rather than relaxing
     # production for them.
     def test_a_fake_that_does_not_report_a_real_byte_count_is_no_longer_trusted(self):
