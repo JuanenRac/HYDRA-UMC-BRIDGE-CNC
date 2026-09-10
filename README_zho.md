@@ -78,10 +78,14 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_cell.py             # 安全空闲准入、开门拒绝、中止转发
 │   ├── test_observation.py      # 缺失安全证据时 fail-closed 失败
 │   ├── test_serial_transport.py # 针对模拟串口的真实传输测试,含 fail-closed 路径
-│   └── test_mqtt_transport.py   # 针对模拟 broker 客户端的 MQTT 命令/状态格式测试
+│   ├── test_mqtt_transport.py   # 针对模拟 broker 客户端的 MQTT 命令/状态格式测试
+│   ├── grbl_emulator.py         # 协议忠实的 GRBL v1.1 模拟器（真实的测试替身）
+│   └── test_grbl_emulator.py    # 针对 GRBL v1.1 模拟器的 bridge 行为
 ├── tools/
 │   ├── build_test.py            # 非变更式编译 + 测试运行器 (build-test.bat/.sh)
-│   └── bump_version.py          # 同步 pyproject.toml、清单和 CHANGELOG.md
+│   ├── bump_version.py          # 同步 pyproject.toml、清单和 CHANGELOG.md
+│   ├── ci_validate.py           # 无依赖、非破坏性的CI基线检查 (由 .github/workflows/ci.yml 使用)
+│   └── inspect_controller_evidence.py # 规范化已保存的本地证据 JSON 文件（不打开任何连接）
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # 范围、兼容平台、脚本、硬件验收门控
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # 什么算作真实安全证据,以及此 bridge 拒绝推断的内容

@@ -78,10 +78,14 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_cell.py             # Admission en repos sûr, rejet porte ouverte, transmission d'abandon
 │   ├── test_observation.py      # Une preuve de sécurité manquante échoue en fail-closed
 │   ├── test_serial_transport.py # Transport série réel contre un port simulé, incl. chemins fail-closed
-│   └── test_mqtt_transport.py   # Tests de forme commande/état MQTT contre un client broker simulé
+│   ├── test_mqtt_transport.py   # Tests de forme commande/état MQTT contre un client broker simulé
+│   ├── grbl_emulator.py         # Émulateur GRBL v1.1 fidèle au protocole (double de test réaliste)
+│   └── test_grbl_emulator.py    # Comportement du bridge face à l'émulateur GRBL v1.1
 ├── tools/
 │   ├── build_test.py            # Compilateur + lanceur de tests non mutant (build-test.bat/.sh)
-│   └── bump_version.py          # Synchronise pyproject.toml, manifeste et CHANGELOG.md
+│   ├── bump_version.py          # Synchronise pyproject.toml, manifeste et CHANGELOG.md
+│   ├── ci_validate.py           # Base CI sans dépendances et non destructive (utilisée par .github/workflows/ci.yml)
+│   └── inspect_controller_evidence.py # Normalise un fichier JSON de preuve local enregistré (sans ouvrir de liaison)
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # Portée, plateformes compatibles, scripts, portail d'acceptation matérielle
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # Ce qui compte comme preuve de sécurité réelle et ce que ce bridge refuse de déduire
