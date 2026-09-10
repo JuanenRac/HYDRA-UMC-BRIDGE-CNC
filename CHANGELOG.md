@@ -6,6 +6,28 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.1] - A protocol-faithful GRBL v1.1 emulator, not a one-line fake
+
+Until now the only serial test double here was `FakeSerial` - one canned
+status line, no state machine, no framing. It proves this bridge's own
+parsing/gating in isolation but never that the real `serial_transport.py`
+code survives a controller that behaves like the real thing. New
+`tests/grbl_emulator.py` is a genuine `SerialLike` GRBL v1.1 controller:
+a `Grbl 1.1h ['$' for help]` welcome banner that a soft reset re-emits;
+real-time bytes (`?`/`!`/`~`/Ctrl-X) processed immediately and
+out-of-band, with `!`/`~` producing no `ok` exactly like real GRBL; `?`
+returning a real `<State|MPos:x,y,z|FS:f,s|WCO:...>` status frame; a real
+Idle -> Run <-> Hold state machine; a latched `ALARM:n` that only `$X`
+or homing clears; a `Door:1` hold that blocks resume until the door
+closes; and a line channel answering `ok`/`error:9`/`error:20`/`[GC:...]`
+on its own frames. `trigger_alarm()`/`open_door()`/`close_door()`/
+`start_program()` let a test drive the physical side. New
+`tests/test_grbl_emulator.py` runs this bridge's real `GrblSerialProbe`/
+`GrblRealtimeControl` end to end against it (8 tests): the RUN->HOLD->RUN
+feed-hold cycle, resume refused when not actually holding, a latched
+alarm surfacing as `FAULT` and surviving a soft reset, the safety door
+blocking resume, and the port going dead failing closed. 65 tests total.
+
 ## [0.1.0] - V07-019: a non-conforming serial write was still reported as executed
 
 A second independent revalidation audit found REV-006's own fix only
