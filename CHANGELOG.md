@@ -30,7 +30,7 @@ blocking resume, and the port going dead failing closed. 65 tests total.
 
 ## [0.1.0] - V07-019: a non-conforming serial write was still reported as executed
 
-A second independent revalidation audit found REV-006's own fix only
+A second, closer review found REV-006's own fix only
 caught a reported SHORT byte count from `GrblRealtimeControl._write()` -
 `None`/a `bool`/a mismatched-but-real int (or any other non-conforming
 return value) was still silently trusted as `executed=True`, just
@@ -41,14 +41,14 @@ feed-hold/soft-reset/resume byte this made the safety evidence itself
 potentially misleading.
 
 Fixed the real fakes in this bridge's own test suite to report a real
-byte count by default (the audit's own explicit correction: fix the
+byte count by default (an explicit correction: fix the
 fakes to comply with the production contract, don't relax production
 for them), rather than keeping the old "an unreported count is trusted"
 escape hatch.
 
-## [0.0.9] - REV-005/REV-006: real regressions found by independent revalidation
+## [0.0.9] - REV-005/REV-006: real regressions
 
-An independent revalidation audit reproduced 2 real regressions in this
+Closer review reproduced 2 real regressions in this
 bridge's own real interlock/serial logic (each with a real fake-connection
 probe, no hardware involved). Both fixed here, each with a new regression
 test:
@@ -73,12 +73,12 @@ test:
   write count now produces `executed=False` with a clear reason; a
   fake/stub that does not report a byte count (returns `None`, as every
   existing test's own fake already did) is still trusted unchanged.
-- 6 new regression tests (54 total), each reproducing the audit's own
+- 6 new regression tests (54 total), each reproducing its own
   exact scenario before the fix and passing after it.
 
 ## [0.0.8] - CNC-01: real interlocks are re-read before every real command
 
-- **CNC-01 (found in an ecosystem-wide software-improvements audit, P0):**
+- **CNC-01 (P0):**
   `cmd/cycle_start_resume` and `cmd/job` both reused
   `self._last_snapshot` - whatever door/E-STOP state was last queried,
   possibly from an unrelated `cmd/status` poll seconds or minutes
@@ -96,7 +96,7 @@ test:
   (47 total, up from 45) reproduce the exact door-opens-mid-flight race
   for both commands and prove the real byte is never written / the job
   is refused.
-- **LANG-05 (found in the same audit):** the English README's own
+- **LANG-05:** the English README's own
   "observation helpers are evidence normalizers" paragraph, linking
   `docs/CONTROLLER_EVIDENCE_BOUNDARY.md`, was missing from all 6
   translations even though the file was already listed in each one's own
@@ -114,8 +114,7 @@ test:
   mechanically without a hand-written entry replacing the stub first).
   Repo-hygiene fix, no runtime code changed, no version bump.
 - **`run_forever()`'s initial MQTT connect now retries with backoff**
-  (`connect_with_retry()`, new) - found in an ecosystem-wide
-  software-improvements audit: this bridge's process used to die
+  (`connect_with_retry()`, new) - this bridge's process used to die
   outright if it started before HYDRA-UMC-MQTT-BROKER was listening yet,
   a real race between two independent systemd units with no ordering
   guarantee across a reboot. Only `OSError` (what an unreachable broker

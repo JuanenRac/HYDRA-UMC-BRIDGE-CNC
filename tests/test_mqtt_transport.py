@@ -23,7 +23,7 @@ class FakeSerial:
 
     def write(self, data: bytes):
         self.written.append(data)
-        # V07-019 (found in an independent revalidation audit, P2): a real
+        # V07-019 (P2): a real
         # pyserial connection's write() returns the real byte count
         # actually written - GrblRealtimeControl._write() now requires
         # exactly that (see its own comment) instead of silently trusting
@@ -99,8 +99,7 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertEqual(connection.written, [b"\x18"])
 
     def test_cycle_start_resume_always_queries_fresh_status_even_if_one_was_cached(self):
-        # CNC-01 regression (found in an ecosystem-wide software-improvements
-        # audit): this used to reuse whatever refresh_status() last saw
+        # CNC-01 regression: this used to reuse whatever refresh_status() last saw
         # instead of re-checking live - even after an explicit earlier
         # refresh_status() call, handle_message() must still issue its OWN
         # real status query right before deciding.
@@ -127,7 +126,7 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertEqual(connection.written, [b"?"])  # the fresh re-check itself, no resume byte
 
     def test_cycle_start_resume_refuses_a_real_door_open_between_refresh_and_order_regression_for_cnc_01(self):
-        # The exact real reproduction from the audit: door closed + no
+        # The exact real reproduction: door closed + no
         # E-STOP at an earlier refresh, then the door opens (and E-STOP
         # activates) before cycle_start_resume actually arrives. The real
         # b"~" byte must never reach the serial port for this sequence.
@@ -142,7 +141,7 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertNotIn(b"~", connection.written)
 
     def test_cycle_start_resume_refuses_a_real_door_open_during_the_blocking_status_read_regression_for_rev_005(self):
-        # REV-005 (found in an independent revalidation audit) - a deeper
+        # REV-005 - a deeper
         # version of CNC-01 above: the real event happens WHILE
         # refresh_status()'s own readline() is blocked, not merely between
         # two separate messages. FakeSerial's readline() here flips the
@@ -207,8 +206,7 @@ class JobCommandTests(unittest.TestCase):
         self.assertTrue(json.loads(publishes[0].payload)["allowed"])
 
     def test_job_refuses_a_real_door_open_between_refresh_and_job_regression_for_cnc_01(self):
-        # CNC-01 regression (found in an ecosystem-wide software-improvements
-        # audit): _handle_job() had the exact same stale-snapshot gap as
+        # CNC-01 regression: _handle_job() had the exact same stale-snapshot gap as
         # cycle_start_resume - door closed + no E-STOP at an earlier poll,
         # then the door opens and E-STOP activates before a new cmd/job
         # arrives. The gate must see the CURRENT machine state, not the one
@@ -241,8 +239,7 @@ class RunForeverTests(unittest.TestCase):
 
 class ConnectWithRetryTests(unittest.TestCase):
     """connect_with_retry() is pure - no real paho-mqtt/broker needed to
-    prove the real startup-race tolerance an ecosystem-wide software
-    audit found missing here (this bridge's process used to die outright
+    prove the real startup-race tolerance that was missing here (this bridge's process used to die outright
     if it started before HYDRA-UMC-MQTT-BROKER was listening yet)."""
 
     def test_succeeds_on_the_first_try_without_sleeping(self):
