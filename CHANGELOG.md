@@ -6,6 +6,27 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.3] - H050/H051: configurable MQTT authentication, and a retained command can no longer replay as a live one
+
+- **H050.** `run_forever()` had no way to authenticate against
+  HYDRA-UMC-MQTT-BROKER's own real, opt-in `MQTT_AUTH_JSON` username/
+  password CONNECT authentication - a broker deployed with credentials
+  required was simply unreachable from this bridge. New optional
+  `username`/`password` keyword arguments call paho-mqtt's own
+  `username_pw_set()`; a `password` given without a `username` is
+  rejected outright rather than silently connecting unauthenticated.
+- **H051.** `on_connect()`'s `subscribe("cmd/#")` makes the broker replay
+  every currently-retained message on that wildcard immediately - on
+  *every* reconnect, not just once at startup. A retained `cmd/job` (or
+  any other `cmd/*` topic) would re-trigger a real physical decision with
+  no new operator intent behind it. `handle_message()` now takes a
+  `retained` flag and ignores any retained delivery before it reaches a
+  real command; `on_message()` passes the real MQTT message's own
+  `.retain` flag through.
+- 7 new tests, confirmed to fail against the pre-fix code (6 real
+  failures) via a local revert of just `mqtt_transport.py`, tests kept.
+  81/81 `unittest` cases pass (`python tools/build_test.py`, up from 74).
+
 ## [0.1.2] - The GRBL emulator fixture now tracks real work offsets and a real planner buffer
 
 `tests/grbl_emulator.py` (I48, the remaining half): closes the two real

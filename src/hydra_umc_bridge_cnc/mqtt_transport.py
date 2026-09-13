@@ -132,15 +132,29 @@ class CncMqttBridge:
 
         return self._probe.query_status(self._connection, estop=self._estop, door_closed=self._door_closed)
 
-    def handle_message(self, topic: str, payload: bytes) -> list[MqttPublish]:
+    def handle_message(self, topic: str, payload: bytes, *, retained: bool = False) -> list[MqttPublish]:
         """Route one real inbound MQTT message to the real command it names.
 
         An unrecognised topic (this bridge subscribes to `cmd/#`, a
         wildcard) is silently ignored rather than erroring - a future
         sibling topic under `cmd/` this version does not know about yet
         must never crash the whole message loop.
+
+        H051: `retained` is True when the broker delivered this message
+        because of the MQTT retain flag (a `mosquitto_pub -r`-style
+        mistake, or any publisher that set it), not because a client just
+        published it live. `on_connect()`'s own `subscribe("cmd/#")`
+        replays every currently-retained message on that wildcard the
+        instant it (re)subscribes - which happens on every reconnect, not
+        just once at startup - so a retained `cmd/job` or (on the printer
+        bridge) `cmd/start`/`cmd/resume` would otherwise re-trigger a real
+        physical action every single time this bridge reconnects, with no
+        new operator intent behind it at all. A retained delivery is
+        always ignored here, before it ever reaches a real command.
         """
 
+        if retained:
+            return []
         if not topic.startswith(TOPIC_PREFIX):
             return []
         suffix = topic[len(TOPIC_PREFIX) :]
@@ -231,6 +245,8 @@ def run_forever(
     *,
     max_connect_attempts: int = 5,
     connect_retry_delay_seconds: float = 2.0,
+    username: str | None = None,
+    password: str | None = None,
 ) -> None:
     """Connect to a real HYDRA-UMC-MQTT-BROKER and dispatch forever.
 
@@ -240,7 +256,18 @@ def run_forever(
     connected, paho-mqtt's own loop_forever() already handles a
     mid-session drop/reconnect on its own, so only the first connect
     needed this.
+
+    H050: `username`/`password` are optional (matching
+    HYDRA-UMC-MQTT-BROKER's own `MQTT_AUTH_JSON` authentication, which is
+    itself opt-in) - a broker deployed with authentication required had no
+    way to be reached from here at all before this. `password` is only
+    meaningful together with `username`; a caller supplying `password`
+    alone almost certainly meant to set both, so that combination is
+    rejected rather than silently connecting unauthenticated.
     """
+
+    if password is not None and username is None:
+        raise ValueError("password was given without a username - MQTT credentials need both")
 
     try:
         import paho.mqtt.client as mqtt  # type: ignore[import-untyped]
@@ -254,10 +281,12 @@ def run_forever(
         client.subscribe(f"{TOPIC_PREFIX}cmd/#")  # type: ignore[attr-defined]
 
     def on_message(client: object, userdata: object, message: object) -> None:
-        for publish in bridge.handle_message(message.topic, message.payload):  # type: ignore[attr-defined]
+        for publish in bridge.handle_message(message.topic, message.payload, retained=message.retain):  # type: ignore[attr-defined]
             client.publish(publish.topic, publish.payload, retain=publish.retain)  # type: ignore[attr-defined]
 
     client = mqtt.Client(client_id=client_id)
+    if username is not None:
+        client.username_pw_set(username, password)
     client.on_connect = on_connect
     client.on_message = on_message
     connect_with_retry(
