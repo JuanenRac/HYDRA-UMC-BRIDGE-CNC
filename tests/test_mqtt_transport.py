@@ -236,6 +236,104 @@ class RunForeverTests(unittest.TestCase):
             run_forever(b, "127.0.0.1")
         self.assertIn("paho-mqtt is not installed", str(context.exception))
 
+    def test_password_without_username_is_rejected_before_ever_touching_paho_mqtt(self):
+        # H050: catches the most likely real misconfiguration (someone set
+        # a password and forgot the username) as a real, immediate error -
+        # never a silent unauthenticated connection to a broker that
+        # actually requires MQTT_AUTH_JSON credentials.
+        from hydra_umc_bridge_cnc import run_forever
+
+        b, _, _signals = bridge()
+        with self.assertRaises(ValueError) as context:
+            run_forever(b, "127.0.0.1", password="secret")
+        self.assertIn("password was given without a username", str(context.exception))
+
+    def test_configures_broker_credentials_when_given(self):
+        # H050: HYDRA-UMC-MQTT-BROKER's own MQTT_AUTH_JSON authentication
+        # is real but this bridge previously had no way at all to supply
+        # a username/password to reach a broker that requires it.
+        try:
+            import paho.mqtt.client as mqtt
+        except ImportError:
+            self.skipTest("paho-mqtt is not installed in this environment - nothing to prove here")
+        from unittest.mock import MagicMock, patch
+
+        from hydra_umc_bridge_cnc import run_forever
+
+        b, _, _signals = bridge()
+        fake_client = MagicMock()
+        with patch.object(mqtt, "Client", return_value=fake_client):
+            run_forever(b, "127.0.0.1", username="hydra-umc-bridge-cnc", password="s3cret")
+        fake_client.username_pw_set.assert_called_once_with("hydra-umc-bridge-cnc", "s3cret")
+
+    def test_does_not_touch_credentials_when_none_are_given(self):
+        # Authentication stays opt-in on the client side too, matching the
+        # broker's own opt-in MQTT_AUTH_JSON - an existing unauthenticated
+        # local broker must keep working exactly as before.
+        try:
+            import paho.mqtt.client as mqtt
+        except ImportError:
+            self.skipTest("paho-mqtt is not installed in this environment - nothing to prove here")
+        from unittest.mock import MagicMock, patch
+
+        from hydra_umc_bridge_cnc import run_forever
+
+        b, _, _signals = bridge()
+        fake_client = MagicMock()
+        with patch.object(mqtt, "Client", return_value=fake_client):
+            run_forever(b, "127.0.0.1")
+        fake_client.username_pw_set.assert_not_called()
+
+    def test_on_message_passes_the_real_retain_flag_through_to_handle_message(self):
+        # H051 end to end: on_message() is the one place a real
+        # paho-mqtt MQTTMessage's own `.retain` flag exists - it must
+        # reach handle_message() rather than being dropped on the floor,
+        # or every retained-command protection below would be dead code
+        # in the one real path that actually needs it.
+        try:
+            import paho.mqtt.client as mqtt
+        except ImportError:
+            self.skipTest("paho-mqtt is not installed in this environment - nothing to prove here")
+        from unittest.mock import MagicMock, patch
+
+        from hydra_umc_bridge_cnc import run_forever
+
+        b, connection, _signals = bridge()
+        fake_client = MagicMock()
+        with patch.object(mqtt, "Client", return_value=fake_client):
+            run_forever(b, "127.0.0.1")
+        on_message = fake_client.on_message
+        message = MagicMock(topic=f"{TOPIC_PREFIX}cmd/feed_hold", payload=b"", retain=True)
+        on_message(fake_client, None, message)
+        self.assertEqual(connection.written, [])  # a retained delivery must never reach the real GRBL byte
+
+
+class RetainedMessageTests(unittest.TestCase):
+    """H051: a real broker replays every currently-retained message on the
+    subscribed wildcard immediately upon (re)subscribe - which happens on
+    every reconnect, not just once at startup. None of this bridge's
+    `cmd/*` topics are ever meant to be retained by a legitimate live
+    command, so a retained delivery must never reach a real action."""
+
+    def test_a_retained_feed_hold_never_sends_the_real_grbl_byte(self):
+        b, connection, _signals = bridge()
+        publishes = b.handle_message(f"{TOPIC_PREFIX}cmd/feed_hold", b"", retained=True)
+        self.assertEqual(publishes, [])
+        self.assertEqual(connection.written, [])
+
+    def test_a_retained_job_command_is_never_gated_or_applied(self):
+        b, connection, _signals = bridge(b"<Idle|MPos:0,0,0>\n", cell_state=CellState.READY)
+        payload = json.dumps(job_to_dict(job())).encode("utf-8")
+        publishes = b.handle_message(f"{TOPIC_PREFIX}cmd/job", payload, retained=True)
+        self.assertEqual(publishes, [])
+        self.assertEqual(connection.written, [])  # not even a fresh status query happened
+
+    def test_a_live_non_retained_message_is_unaffected(self):
+        b, connection, _signals = bridge()
+        publishes = b.handle_message(f"{TOPIC_PREFIX}cmd/feed_hold", b"", retained=False)
+        self.assertEqual(connection.written, [b"!"])
+        self.assertTrue(json.loads(publishes[0].payload)["executed"])
+
 
 class ConnectWithRetryTests(unittest.TestCase):
     """connect_with_retry() is pure - no real paho-mqtt/broker needed to

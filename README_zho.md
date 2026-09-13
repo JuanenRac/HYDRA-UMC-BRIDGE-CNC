@@ -22,7 +22,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **诚实检查——今天真正可运行的部分：** 故障安全的单元快照与安全门控（`cell.py` 中的 `CncSnapshot`/`CncCellBridge`，每个任务都会经过 `HYDRA-UMC-SDK` 自身真正的 `evaluate_job()`）、只读的 GRBL/MTConnect 证据归一化器（`observation.py`）、真正的 GRBL 串口传输（`serial_transport.py` 中的 `GrblSerialProbe`/`GrblRealtimeControl`），以及 MQTT 命令/状态传输（`mqtt_transport.py`）都是真实的，并由 74 个通过的 `unittest` 用例覆盖（`python tools/build_test.py`），其中包括让该桥接对抗一个协议忠实但纯手写的 GRBL v1.1 模拟器的 `tests/test_grbl_emulator.py`。以上这些都从未接触过真实的串口、真实的 MQTT broker 或真实的 CNC 控制器——`test_serial_transport.py` 自带的 `FakeSerial` 替代了物理连接，`test_mqtt_transport.py` 同样使用了一个伪造的 broker 客户端。目前既没有 LinuxCNC HAL 适配器，也没有实时的 `run` 命令，因为还没有驱动过任何真实的控制器——详见下文的"当前状态与后续步骤"（已经如实说明了这一点），以及 `CHANGELOG.md` 中目前具体已交付的内容。
+> **诚实检查——今天真正可运行的部分：** 故障安全的单元快照与安全门控（`cell.py` 中的 `CncSnapshot`/`CncCellBridge`，每个任务都会经过 `HYDRA-UMC-SDK` 自身真正的 `evaluate_job()`）、只读的 GRBL/MTConnect 证据归一化器（`observation.py`）、真正的 GRBL 串口传输（`serial_transport.py` 中的 `GrblSerialProbe`/`GrblRealtimeControl`），以及 MQTT 命令/状态传输（`mqtt_transport.py`）都是真实的，并由 81 个通过的 `unittest` 用例覆盖（`python tools/build_test.py`），其中包括让该桥接对抗一个协议忠实但纯手写的 GRBL v1.1 模拟器的 `tests/test_grbl_emulator.py`。以上这些都从未接触过真实的串口、真实的 MQTT broker 或真实的 CNC 控制器——`test_serial_transport.py` 自带的 `FakeSerial` 替代了物理连接，`test_mqtt_transport.py` 同样使用了一个伪造的 broker 客户端。目前既没有 LinuxCNC HAL 适配器，也没有实时的 `run` 命令，因为还没有驱动过任何真实的控制器——详见下文的"当前状态与后续步骤"（已经如实说明了这一点），以及 `CHANGELOG.md` 中目前具体已交付的内容。
 
 ---
 
@@ -127,7 +127,7 @@ bash build.sh
 
 ## ✅ 当前状态与后续步骤
 
-**目前真实的部分:** 版本 `0.1.2`,一个已在本地测试过的故障安全单元协调器(`CncSnapshot` + `CncCellBridge`),依托 `HYDRA-UMC-SDK` 的共享任务门控,包含严格的只读控制器证据标准化,覆盖 GRBL v1.1 完整的真实状态词汇表,包括真实的 `Hold:N`/`Door:N` 子状态(`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)以及 MTConnect 执行状态,一个真实的串行传输层(`GrblSerialProbe`/`GrblRealtimeControl`),可通过真实连接查询状态并发送 GRBL 自身的实时控制字节——门锁/急停的实时读取现在发生在该查询自身的阻塞式往返完成之后,而不是之前;真实的短写入或零字节写入会被报告为未执行,而不是虚假的成功——配有确定性的七十四项 `unittest` 测试套件,以及已接入 CI 并带 SDK 检出的非变更式 build-test 脚本。
+**目前真实的部分:** 版本 `0.1.3`,一个已在本地测试过的故障安全单元协调器(`CncSnapshot` + `CncCellBridge`),依托 `HYDRA-UMC-SDK` 的共享任务门控,包含严格的只读控制器证据标准化,覆盖 GRBL v1.1 完整的真实状态词汇表,包括真实的 `Hold:N`/`Door:N` 子状态(`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)以及 MTConnect 执行状态,一个真实的串行传输层(`GrblSerialProbe`/`GrblRealtimeControl`),可通过真实连接查询状态并发送 GRBL 自身的实时控制字节——门锁/急停的实时读取现在发生在该查询自身的阻塞式往返完成之后,而不是之前;真实的短写入或零字节写入会被报告为未执行,而不是虚假的成功——配有确定性的八十一项 `unittest` 测试套件,以及已接入 CI 并带 SDK 检出的非变更式 build-test 脚本。
 
 **集成边界:** CNC 控制器(LinuxCNC 或其他)始终保留对轨迹、主轴和机床限位的控制权;本桥接只负责门控*辅助*机器人工作,绝不涉及控制器自身的运动。
 
