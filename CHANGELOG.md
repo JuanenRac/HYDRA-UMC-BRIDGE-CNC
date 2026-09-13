@@ -6,6 +6,32 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.2] - The GRBL emulator fixture now tracks real work offsets and a real planner buffer
+
+`tests/grbl_emulator.py` (I48, the remaining half): closes the two real
+gaps in this test double's own protocol fidelity.
+
+- **Work coordinate offsets.** The status frame's `WCO` field used to be
+  hardcoded to `0.000,0.000,0.000` no matter what a test sent - `G54`-`G59`
+  selection, `G10 L2 P<n>` (set a work coordinate system's offset) and
+  `G92`/`G92.1` now all actually change it, and a motion command's target
+  is computed in work space and converted through whichever offset is
+  active, same as real GRBL (`MPos = WPos + WCO`).
+- **A real, bounded planner buffer.** Motion lines used to get an instant
+  `ok` no matter how many were already in flight - now they queue against
+  `planner_buffer_size` (16 blocks, matching GRBL's own
+  `BLOCK_BUFFER_SIZE`), and a block accepted while the buffer is already
+  full withholds its `ok` until the new `complete_next_block()` frees a
+  slot: the real backpressure a G-code streamer must respect. A soft
+  reset discards the whole queue rather than resuming it, and
+  `complete_next_block()` refuses to advance outside `Run` (fails loudly
+  instead of faking progress during Hold/Alarm/Door).
+
+10 new tests. This bridge's own production code still never streams
+G-code and never reads position (`serial_transport.py`'s own documented
+boundary) - both additions are fixture-only realism, useful to any test
+that wants to drive the emulator's physical side more precisely.
+
 ## [0.1.1] - A protocol-faithful GRBL v1.1 emulator, not a one-line fake
 
 Until now the only serial test double here was `FakeSerial` - one canned

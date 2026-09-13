@@ -114,6 +114,132 @@ class GrblEmulatorProtocolTests(unittest.TestCase):
         self.assertEqual(self.grbl.readline(), b"[MSG:Caution: Unlocked]\r\n")
         self.assertEqual(self.grbl.readline(), b"ok\r\n")
 
+    def test_g10_sets_a_real_work_offset_reflected_in_the_status_frame(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:0.000,0.000,0.000", self.grbl.readline())
+
+        self.grbl.write(b"G10 L2 P1 X10 Y5 Z0\n")
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:10.000,5.000,0.000", self.grbl.readline())
+
+    def test_g92_derives_its_offset_from_the_real_machine_position(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.set_machine_position(50.0, 20.0, 0.0)
+
+        # "The point I'm at right now IS work X0 Y0" - offset must be
+        # exactly the current machine position for the axes given.
+        self.grbl.write(b"G92 X0 Y0\n")
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:50.000,20.000,0.000", self.grbl.readline())
+
+        # G92.1 clears it back to a real zero offset, not just the display.
+        self.grbl.write(b"G92.1\n")
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:0.000,0.000,0.000", self.grbl.readline())
+
+    def test_switching_work_coordinate_system_switches_the_reported_offset(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"G10 L2 P1 X10 Y0 Z0\n")
+        self.grbl.readline()
+        self.grbl.write(b"G10 L2 P2 X-10 Y0 Z0\n")
+        self.grbl.readline()
+
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:10.000,0.000,0.000", self.grbl.readline())  # still G54
+
+        self.grbl.write(b"G55\n")
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+        self.grbl.write(b"?")
+        self.assertIn(b"WCO:-10.000,0.000,0.000", self.grbl.readline())
+
+    def test_motion_target_is_computed_through_the_active_work_offset(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"G10 L2 P1 X100 Y0 Z0\n")
+        self.grbl.readline()
+
+        # Commanding work-space X0 Y0 with a +100 work offset must land the
+        # MACHINE at X100, not X0 - the exact offset-aware chain a bridge
+        # (or any future consumer of MPos/WCO) needs to get right.
+        self.grbl.write(b"G1 X0 Y0\n")
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+        self.grbl.write(b"?")
+        self.assertIn(b"MPos:0.000,0.000,0.000", self.grbl.readline())  # accepted, not yet executed
+
+        self.grbl.complete_next_block()
+        self.assertEqual(self.grbl.machine_position, (100.0, 0.0, 0.0))
+
+    def test_a_full_planner_buffer_withholds_ok_until_a_block_completes(self) -> None:
+        _drain_welcome(self.grbl)
+        for i in range(1, self.grbl.planner_buffer_size + 1):
+            self.grbl.write(f"G1 X{i}\n".encode("ascii"))
+            self.assertEqual(
+                self.grbl.readline(), b"ok\r\n",
+                f"block {i} should have been accepted immediately - buffer not full yet",
+            )
+
+        # The buffer is now exactly full - one more block queues but its
+        # `ok` is real backpressure, withheld until a slot frees up.
+        self.grbl.write(b"G1 X999\n")
+        self.assertEqual(
+            self.grbl.readline(), b"",
+            "a block accepted while the planner buffer is full must not get an ok yet",
+        )
+
+        self.grbl.complete_next_block()  # drains the oldest queued block (X1)
+        self.assertEqual(self.grbl.machine_position, (1.0, 0.0, 0.0))
+        # Freeing that one slot must release exactly the deferred ok - no more.
+        self.assertEqual(self.grbl.readline(), b"ok\r\n")
+        self.assertEqual(self.grbl.readline(), b"")
+
+    def test_complete_next_block_refuses_to_run_with_nothing_queued(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.start_program()  # Run, but via the OTHER (non-planner) path
+        with self.assertRaises(RuntimeError):
+            self.grbl.complete_next_block()
+
+    def test_complete_next_block_refuses_to_advance_while_not_running(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"G1 X10\n")
+        self.grbl.readline()  # ok
+        self.control.feed_hold(self.grbl)
+        self.assertEqual(self.grbl.state, "Hold")
+
+        # Real GRBL never advances the planner during a hold - a test (or a
+        # bridge) that tried to fake progress here must fail loudly instead.
+        with self.assertRaises(RuntimeError):
+            self.grbl.complete_next_block()
+
+    def test_soft_reset_discards_the_whole_planner_queue(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"G1 X10\n")
+        self.grbl.readline()
+        self.grbl.write(b"G1 X20\n")
+        self.grbl.readline()
+
+        self.control.soft_reset(self.grbl)
+        self.grbl.readline()  # re-emitted welcome
+
+        # Nothing survives a reset to complete - real GRBL requires the
+        # sender to restart its stream from scratch.
+        self.grbl.start_program()
+        with self.assertRaises(RuntimeError):
+            self.grbl.complete_next_block()
+
+    def test_state_returns_to_idle_once_the_queue_fully_drains(self) -> None:
+        _drain_welcome(self.grbl)
+        self.grbl.write(b"G1 X10\n")
+        self.grbl.readline()
+        self.assertEqual(self.grbl.state, "Run")
+
+        self.grbl.complete_next_block()
+        self.assertEqual(self.grbl.state, "Idle")
+        self.assertEqual(self.grbl.feed_rate, 0)
+
     def test_bridge_fails_closed_when_the_port_returns_nothing(self) -> None:
         # A real pyserial read timeout returns b"" - drain the welcome so
         # the next readline() is genuinely empty.
