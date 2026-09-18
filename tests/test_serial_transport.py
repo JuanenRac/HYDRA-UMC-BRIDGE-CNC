@@ -12,10 +12,12 @@ independent of pyserial or a real port - only open_serial_port() itself
 needs pyserial, and it isn't exercised here (see its own docstring).
 """
 
+import os
 import unittest
 
 from hydra_umc_sdk.bridge_contract import CellState, MachineState
 from hydra_umc_bridge_cnc import CncSnapshot, GrblRealtimeControl, GrblSerialProbe
+from hydra_umc_bridge_cnc.serial_transport import ReconnectingSerialConnection, resolve_serial_device_path
 
 
 class FakeSerial:
@@ -244,6 +246,140 @@ class OpenSerialPortTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             open_serial_port("COM3")
         self.assertIn("pyserial is not installed", str(context.exception))
+
+
+class FakePortInfo:
+    """Minimal stand-in for pyserial's ListPortInfo - only the attributes
+    resolve_serial_device_path() actually reads."""
+
+    def __init__(self, device: str, serial_number: str | None = None, hwid: str = ""):
+        self.device = device
+        self.serial_number = serial_number
+        self.hwid = hwid
+
+
+class ResolveSerialDevicePathTests(unittest.TestCase):
+    def test_an_already_existing_path_is_returned_as_is(self):
+        # Covers the real Linux /dev/serial/by-id/* case: the OS/udev
+        # symlink itself is already the stable identifier, no enumeration
+        # needed - this test uses this very test file's own path (always
+        # exists) rather than a real serial device, since only the
+        # "path exists" branch is under test here.
+        this_file = os.path.abspath(__file__)
+        self.assertEqual(resolve_serial_device_path(this_file), this_file)
+
+    def test_a_serial_number_match_resolves_to_the_current_device_path(self):
+        ports = [
+            FakePortInfo("/dev/ttyUSB0", serial_number="AB123"),
+            FakePortInfo("/dev/ttyUSB1", serial_number="ZZ999"),
+        ]
+        resolved = resolve_serial_device_path("AB123", list_ports=lambda: ports)
+        self.assertEqual(resolved, "/dev/ttyUSB0")
+
+    def test_a_replug_that_changes_the_port_name_still_resolves_by_id(self):
+        # The real scenario this whole feature exists for: the same
+        # physical device (same serial number) now enumerates under a
+        # different OS-assigned port after a replug.
+        before = [FakePortInfo("COM3", serial_number="AB123")]
+        after = [FakePortInfo("COM5", serial_number="AB123")]
+        self.assertEqual(resolve_serial_device_path("AB123", list_ports=lambda: before), "COM3")
+        self.assertEqual(resolve_serial_device_path("AB123", list_ports=lambda: after), "COM5")
+
+    def test_a_hwid_substring_match_also_resolves(self):
+        ports = [FakePortInfo("COM4", serial_number=None, hwid="USB VID:PID=1A86:7523 SER=AB123")]
+        resolved = resolve_serial_device_path("VID:PID=1A86:7523", list_ports=lambda: ports)
+        self.assertEqual(resolved, "COM4")
+
+    def test_a_device_that_is_not_currently_connected_raises_a_clear_error(self):
+        with self.assertRaises(RuntimeError) as context:
+            resolve_serial_device_path("not-plugged-in", list_ports=lambda: [])
+        self.assertIn("not-plugged-in", str(context.exception))
+
+
+class ReconnectingSerialConnectionTests(unittest.TestCase):
+    def test_lazily_opens_the_connection_on_first_use(self):
+        opened: list[FakeSerial] = []
+
+        def connect() -> FakeSerial:
+            fake = FakeSerial()
+            opened.append(fake)
+            return fake
+
+        reconnecting = ReconnectingSerialConnection(connect)
+        self.assertEqual(opened, [])
+        reconnecting.write(b"?")
+        self.assertEqual(len(opened), 1)
+
+    def test_a_write_failure_triggers_exactly_one_reconnect_and_the_write_is_retried(self):
+        first = FakeSerial()
+        first.raise_on_write = OSError("device disconnected")
+        second = FakeSerial()
+        connections = [first, second]
+
+        reconnecting = ReconnectingSerialConnection(lambda: connections.pop(0))
+        written = reconnecting.write(b"?")
+
+        self.assertTrue(first.closed)
+        self.assertEqual(second.written, [b"?"])
+        self.assertEqual(written, 1)
+
+    def test_a_readline_failure_triggers_exactly_one_reconnect_and_the_read_is_retried(self):
+        class FlakyThenGood(FakeSerial):
+            def __init__(self, fail: bool):
+                super().__init__(b"<Idle|MPos:0,0,0>\n")
+                self._fail = fail
+
+            def readline(self) -> bytes:
+                if self._fail:
+                    raise OSError("device disconnected")
+                return super().readline()
+
+        connections = [FlakyThenGood(fail=True), FlakyThenGood(fail=False)]
+        reconnecting = ReconnectingSerialConnection(lambda: connections.pop(0))
+        line = reconnecting.readline()
+        self.assertEqual(line, b"<Idle|MPos:0,0,0>\n")
+
+    def test_a_failed_reconnect_propagates_the_original_oserror(self):
+        # The device genuinely is not back yet - this must fail closed
+        # (an OSError, same as GrblSerialProbe/GrblRealtimeControl already
+        # handle), not raise something callers don't already expect, and
+        # not silently swallow the failure.
+        first = FakeSerial()
+        first.raise_on_write = OSError("device disconnected")
+
+        def connect_always_fails() -> FakeSerial:
+            fake = FakeSerial()
+            fake.raise_on_write = OSError("still not plugged in")
+            return fake
+
+        calls = {"n": 0}
+
+        def connect() -> FakeSerial:
+            calls["n"] += 1
+            return first if calls["n"] == 1 else connect_always_fails()
+
+        reconnecting = ReconnectingSerialConnection(connect)
+        with self.assertRaises(OSError):
+            reconnecting.write(b"?")
+
+    def test_query_status_survives_a_replug_via_the_reconnecting_connection(self):
+        # End-to-end proof this composes with the existing, untouched
+        # GrblSerialProbe: a real interlock query must keep working across
+        # a simulated cable replug, not just the raw write()/readline().
+        first = FakeSerial()
+        first.raise_on_write = OSError("unplugged")
+        second = FakeSerial(b"<Idle|MPos:0,0,0>\n")
+        connections = [first, second]
+
+        reconnecting = ReconnectingSerialConnection(lambda: connections.pop(0))
+        # query_status() calls write() once, then readline() - the write
+        # transparently reconnects onto `second` (proving the replug is
+        # invisible to GrblSerialProbe, which is never touched by this
+        # feature), and the query completes normally on the healed
+        # connection instead of falling back to a fail-closed snapshot.
+        snapshot = GrblSerialProbe().query_status(reconnecting, estop=lambda: False, door_closed=lambda: True)
+        self.assertEqual(snapshot.machine_state(), MachineState.IDLE)
+        self.assertTrue(first.closed)
 
 
 if __name__ == "__main__":
