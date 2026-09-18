@@ -1,6 +1,6 @@
 <!-- =============================================================================
 HYDRA-UMC-BRIDGE-CNC - Change history
-Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 GPL-3.0-or-later - see LICENSE
 ============================================================================= -->
 
@@ -47,7 +47,7 @@ GPL-3.0-or-later - see LICENSE
 
 ## [0.1.2] - The GRBL emulator fixture now tracks real work offsets and a real planner buffer
 
-`tests/grbl_emulator.py` (I48, the remaining half): closes the two real
+`tests/grbl_emulator.py`: closes the two remaining real
 gaps in this test double's own protocol fidelity.
 
 - **Work coordinate offsets.** The status frame's `WCO` field used to be
@@ -93,9 +93,9 @@ feed-hold cycle, resume refused when not actually holding, a latched
 alarm surfacing as `FAULT` and surviving a soft reset, the safety door
 blocking resume, and the port going dead failing closed. 65 tests total.
 
-## [0.1.0] - V07-019: a non-conforming serial write was still reported as executed
+## [0.1.0] - A non-conforming serial write was still reported as executed
 
-A second, closer review found REV-006's own fix only
+A second, closer review found the prior short-write fix only
 caught a reported SHORT byte count from `GrblRealtimeControl._write()` -
 `None`/a `bool`/a mismatched-but-real int (or any other non-conforming
 return value) was still silently trusted as `executed=True`, just
@@ -111,14 +111,14 @@ fakes to comply with the production contract, don't relax production
 for them), rather than keeping the old "an unreported count is trusted"
 escape hatch.
 
-## [0.0.9] - REV-005/REV-006: real regressions
+## [0.0.9] - Two real regressions in interlock/serial logic
 
 Closer review reproduced 2 real regressions in this
 bridge's own real interlock/serial logic (each with a real fake-connection
 probe, no hardware involved). Both fixed here, each with a new regression
 test:
 
-- **REV-005 [P0]:** `refresh_status()` used to read the live
+- **Fixed a real interlock-check-before-blocking-I/O race:** `refresh_status()` used to read the live
   `estop`/`door_closed` callables BEFORE calling `query_status()`, which
   then blocks on a real `write()`/`readline()` round trip for up to the
   connection's own timeout. A real E-STOP hit or door opened DURING that
@@ -130,7 +130,7 @@ test:
   `GrblSerialProbe.query_status()` now takes the signals as callables and
   calls them itself, immediately AFTER the blocking I/O completes, never
   before it.
-- **REV-006 [P1]:** a real `0`-byte (or short) serial write raises no
+- **Fixed misleading safety evidence on a short serial write:** a real `0`-byte (or short) serial write raises no
   exception at all - the connection is fine, nothing actually reached
   the wire - so it used to be reported as `executed=True` purely because
   nothing crashed. For a real feed-hold/soft-reset/resume byte, this made
@@ -141,9 +141,9 @@ test:
 - 6 new regression tests (54 total), each reproducing its own
   exact scenario before the fix and passing after it.
 
-## [0.0.8] - CNC-01: real interlocks are re-read before every real command
+## [0.0.8] - Real interlocks are re-read before every real command
 
-- **CNC-01 (P0):**
+- **Fixed a real stale-interlock-snapshot bug:**
   `cmd/cycle_start_resume` and `cmd/job` both reused
   `self._last_snapshot` - whatever door/E-STOP state was last queried,
   possibly from an unrelated `cmd/status` poll seconds or minutes
@@ -161,7 +161,7 @@ test:
   (47 total, up from 45) reproduce the exact door-opens-mid-flight race
   for both commands and prove the real byte is never written / the job
   is refused.
-- **LANG-05:** the English README's own
+- **Fixed a missing translation section:** the English README's own
   "observation helpers are evidence normalizers" paragraph, linking
   `docs/CONTROLLER_EVIDENCE_BOUNDARY.md`, was missing from all 6
   translations even though the file was already listed in each one's own
