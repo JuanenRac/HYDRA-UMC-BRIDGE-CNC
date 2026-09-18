@@ -1,6 +1,6 @@
 <!-- =============================================================================
 HYDRA-UMC-BRIDGE-CNC - CNC 单元协调桥接
-Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 GPL-3.0-or-later - see LICENSE
 ============================================================================= -->
 
@@ -22,7 +22,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **诚实检查——今天真正可运行的部分：** 故障安全的单元快照与安全门控（`cell.py` 中的 `CncSnapshot`/`CncCellBridge`，每个任务都会经过 `HYDRA-UMC-SDK` 自身真正的 `evaluate_job()`）、只读的 GRBL/MTConnect 证据归一化器（`observation.py`）、真正的 GRBL 串口传输（`serial_transport.py` 中的 `GrblSerialProbe`/`GrblRealtimeControl`），以及 MQTT 命令/状态传输（`mqtt_transport.py`）都是真实的，并由 81 个通过的 `unittest` 用例覆盖（`python tools/build_test.py`），其中包括让该桥接对抗一个协议忠实但纯手写的 GRBL v1.1 模拟器的 `tests/test_grbl_emulator.py`。以上这些都从未接触过真实的串口、真实的 MQTT broker 或真实的 CNC 控制器——`test_serial_transport.py` 自带的 `FakeSerial` 替代了物理连接，`test_mqtt_transport.py` 同样使用了一个伪造的 broker 客户端。目前既没有 LinuxCNC HAL 适配器，也没有实时的 `run` 命令，因为还没有驱动过任何真实的控制器——详见下文的"当前状态与后续步骤"（已经如实说明了这一点），以及 `CHANGELOG.md` 中目前具体已交付的内容。
+> **诚实检查——今天真正可运行的部分：** 故障安全的单元快照与安全门控（`cell.py` 中的 `CncSnapshot`/`CncCellBridge`，每个任务都会经过 `HYDRA-UMC-SDK` 自身真正的 `evaluate_job()`）、只读的 GRBL/MTConnect 证据归一化器（`observation.py`）、真正的 GRBL 串口传输（`serial_transport.py` 中的 `GrblSerialProbe`/`GrblRealtimeControl`），以及 MQTT 命令/状态传输（`mqtt_transport.py`）都是真实的，并由 91 个通过的 `unittest` 用例覆盖（`python tools/build_test.py`），其中包括让该桥接对抗一个协议忠实但纯手写的 GRBL v1.1 模拟器的 `tests/test_grbl_emulator.py`。以上这些都从未接触过真实的串口、真实的 MQTT broker 或真实的 CNC 控制器——`test_serial_transport.py` 自带的 `FakeSerial` 替代了物理连接，`test_mqtt_transport.py` 同样使用了一个伪造的 broker 客户端。目前既没有 LinuxCNC HAL 适配器，也没有实时的 `run` 命令，因为还没有驱动过任何真实的控制器——详见下文的"当前状态与后续步骤"（已经如实说明了这一点），以及 `CHANGELOG.md` 中目前具体已交付的内容。
 
 ---
 
@@ -121,7 +121,7 @@ bash build-test.sh
 bash build.sh
 ```
 
-`build-test` 使用 `py_compile` 编译 `src/` 下的每个模块,并运行完整的 `unittest` 套件(`tests/test_cell.py`),证明安全空闲准入、开门拒绝和中止转发均按预期工作 —— 它绝不会修改仓库。`build` 会先运行同样的验证,只有成功后才调用 `tools/bump_version.py`,在 `pyproject.toml`、`hydra-umc.project.json` 和 `CHANGELOG.md` 之间同步版本号。目前尚无真正的 CNC `run` 命令 —— 这需要经过验证的控制器集成。
+`build-test` 使用 `py_compile` 编译 `src/` 下的每个模块,并运行在 `tests/` 下发现的完整 `unittest` 套件(`test_cell.py`、`test_observation.py`、`test_serial_transport.py`、`test_mqtt_transport.py`、`test_grbl_emulator.py`——共 91 个测试),证明安全空闲准入、开门拒绝和中止转发等均按预期工作 —— 它绝不会修改仓库。`build` 会先运行同样的验证,只有成功后才调用 `tools/bump_version.py`,在 `pyproject.toml`、`hydra-umc.project.json` 和 `CHANGELOG.md` 之间同步版本号。目前尚无真正的 CNC `run` 命令 —— 这需要经过验证的控制器集成。
 
 ---
 
