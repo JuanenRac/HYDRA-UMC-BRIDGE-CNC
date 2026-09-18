@@ -22,7 +22,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **誠実性チェック - 今日実際に動くもの:** フェイルセーフなセルスナップショットと安全ゲート（`cell.py` の `CncSnapshot`/`CncCellBridge`。すべてのジョブは `HYDRA-UMC-SDK` 自身の本物の `evaluate_job()` を通過する）、読み取り専用の GRBL/MTConnect エビデンス正規化（`observation.py`）、本物の GRBL シリアルトランスポート（`serial_transport.py` の `GrblSerialProbe`/`GrblRealtimeControl`）、および MQTT コマンド/状態トランスポート（`mqtt_transport.py`）は本物であり、81件の通過する `unittest` ケースで検証されている（`python tools/build_test.py`）。これにはプロトコルに忠実な手書きの GRBL v1.1 エミュレータに対してこのブリッジを動かす `tests/test_grbl_emulator.py` も含まれる。これらはいずれも本物のシリアルポート、本物の MQTT ブローカー、実際の CNC コントローラには一切触れていない - `test_serial_transport.py` 独自の `FakeSerial` が物理接続を置き換えており、`test_mqtt_transport.py` も同様に模擬ブローカークライアントを使用している。実際のコントローラがまだ一度も駆動されていないため、LinuxCNC HAL アダプターも実機向けの `run` コマンドもまだ存在しない - 詳細は下記の「現状と次のステップ」に既に明記されており、これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
+> **誠実性チェック - 今日実際に動くもの:** フェイルセーフなセルスナップショットと安全ゲート（`cell.py` の `CncSnapshot`/`CncCellBridge`。すべてのジョブは `HYDRA-UMC-SDK` 自身の本物の `evaluate_job()` を通過する）、読み取り専用の GRBL/MTConnect エビデンス正規化（`observation.py`）、本物の GRBL シリアルトランスポート（`serial_transport.py` の `GrblSerialProbe`/`GrblRealtimeControl`）、および MQTT コマンド/状態トランスポート（`mqtt_transport.py`）は本物であり、91件の通過する `unittest` ケースで検証されている（`python tools/build_test.py`）。これにはプロトコルに忠実な手書きの GRBL v1.1 エミュレータに対してこのブリッジを動かす `tests/test_grbl_emulator.py` も含まれる。これらはいずれも本物のシリアルポート、本物の MQTT ブローカー、実際の CNC コントローラには一切触れていない - `test_serial_transport.py` 独自の `FakeSerial` が物理接続を置き換えており、`test_mqtt_transport.py` も同様に模擬ブローカークライアントを使用している。実際のコントローラがまだ一度も駆動されていないため、LinuxCNC HAL アダプターも実機向けの `run` コマンドもまだ存在しない - 詳細は下記の「現状と次のステップ」に既に明記されており、これまでに実際に出荷された内容は `CHANGELOG.md` を参照。
 
 ---
 
@@ -127,7 +127,7 @@ bash build.sh
 
 ## ✅ 現状と次のステップ
 
-**現時点で実在するもの:** バージョン `0.1.3`。ローカルでテスト済みのフェイルセーフなセル調整器(`CncSnapshot` + `CncCellBridge`)が `HYDRA-UMC-SDK` の共有ジョブゲートの上に構築されており、GRBL v1.1 の実際のステータス語彙全体(実際の `Hold:N`/`Door:N` サブステートを含む `Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)に加えて MTConnect の実行状態もカバーする厳密な読み取り専用コントローラー証拠の正規化、実際の接続経由でステータスを問い合わせ GRBL 自身のリアルタイム制御バイトを送信できる実際のシリアル転送(`GrblSerialProbe`/`GrblRealtimeControl`)——ドア/E-STOP のライブ読み取りは、その問い合わせ自身のブロッキングな往復が完了した直後に行われるようになり、決してその前ではない。実際の短い、またはゼロバイトの書き込みは、偽の成功としてではなく未実行として報告される——決定論的な81件の `unittest` スイートと、SDKチェックアウトを伴いCIに組み込まれた非破壊的なbuild-testスクリプトを備える。
+**現時点で実在するもの:** バージョン `0.1.4`。ローカルでテスト済みのフェイルセーフなセル調整器(`CncSnapshot` + `CncCellBridge`)が `HYDRA-UMC-SDK` の共有ジョブゲートの上に構築されており、GRBL v1.1 の実際のステータス語彙全体(実際の `Hold:N`/`Door:N` サブステートを含む `Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)に加えて MTConnect の実行状態もカバーする厳密な読み取り専用コントローラー証拠の正規化、実際の接続経由でステータスを問い合わせ GRBL 自身のリアルタイム制御バイトを送信できる実際のシリアル転送(`GrblSerialProbe`/`GrblRealtimeControl`)——ドア/E-STOP のライブ読み取りは、その問い合わせ自身のブロッキングな往復が完了した直後に行われるようになり、決してその前ではない。実際の短い、またはゼロバイトの書き込みは、偽の成功としてではなく未実行として報告される——決定論的な91件の `unittest` スイートと、SDKチェックアウトを伴いCIに組み込まれた非破壊的なbuild-testスクリプトを備える。
 
 **統合境界:** CNCコントローラー(LinuxCNCなど)は常に軌道・主軸・機械限界の権限を保持する。このブリッジが調整するのはあくまで*補助的な*ロボット作業のみであり、コントローラー自身の動作には一切関与しない。
 

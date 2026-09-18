@@ -11,9 +11,12 @@ from .observation import snapshot_from_grbl_status, snapshot_from_mapping, snaps
 from .serial_transport import (
     GrblRealtimeControl,
     GrblSerialProbe,
+    ReconnectingSerialConnection,
     RealtimeCommandResult,
     SerialLike,
     open_serial_port,
+    open_serial_port_by_id,
+    resolve_serial_device_path,
 )
 
 __all__ = [
@@ -27,6 +30,9 @@ __all__ = [
     "RealtimeCommandResult",
     "SerialLike",
     "open_serial_port",
+    "open_serial_port_by_id",
+    "resolve_serial_device_path",
+    "ReconnectingSerialConnection",
     "CncMqttBridge",
     "MqttPublish",
     "connect_with_retry",

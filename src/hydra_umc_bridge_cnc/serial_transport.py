@@ -26,6 +26,7 @@ load time.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
@@ -80,6 +81,141 @@ def open_serial_port(port: str, baud: int = 115200, timeout_seconds: float = 1.0
             "(this module's parsing/gating logic works and is tested without it)"
         ) from error
     return serial.Serial(port, baudrate=baud, timeout=timeout_seconds)
+
+
+def resolve_serial_device_path(device_id: str, *, list_ports: Callable[[], list] | None = None) -> str:
+    """Resolve a real, stable USB device identifier to whatever OS device
+    path/port name it currently has - never a static `COM3`/`/dev/ttyUSB0`
+    that a cable replug (or a reboot enumerating USB in a different order)
+    can silently reassign to a different physical device, or away from this
+    one entirely.
+
+    Two real identifier shapes are accepted:
+
+    - An already-existing path (e.g. a Linux `/dev/serial/by-id/usb-...`
+      symlink). These are themselves stable per-physical-device identifiers
+      maintained by the OS/udev, keyed off the device's own USB serial
+      number - resolving one is just confirming it still exists and handing
+      it back; no port enumeration needed.
+    - A bare USB identifier (the device's serial number, or a substring of
+      its `hwid`) that is matched against `list_ports()` - what a Windows
+      `COM*` reconnect needs, since Windows has no by-id path convention.
+      `list_ports` defaults to `serial.tools.list_ports.comports` (imported
+      lazily, same lazy-pyserial convention as `open_serial_port()`), and is
+      injectable so this is unit-testable without any real hardware or
+      pyserial install.
+
+    Raises RuntimeError (never returns a guess) if `device_id` names neither
+    an existing path nor a currently-enumerated device - a real "not plugged
+    in right now" condition a reconnect loop is expected to retry, not a bug
+    to crash on.
+    """
+
+    if os.path.exists(device_id):
+        return device_id
+
+    if list_ports is None:
+        try:
+            from serial.tools.list_ports import comports as list_ports  # type: ignore[import-untyped]
+        except ImportError as error:
+            raise RuntimeError(
+                "pyserial is not installed - install it to resolve a USB device by id "
+                "(this module's parsing/gating logic works and is tested without it)"
+            ) from error
+
+    for port in list_ports():
+        hwid = getattr(port, "hwid", "") or ""
+        serial_number = getattr(port, "serial_number", None)
+        if serial_number == device_id or device_id in hwid:
+            return port.device
+
+    raise RuntimeError(f"no currently-connected serial device matches id {device_id!r}")
+
+
+def open_serial_port_by_id(
+    device_id: str,
+    baud: int = 115200,
+    timeout_seconds: float = 1.0,
+    *,
+    list_ports: Callable[[], list] | None = None,
+) -> SerialLike:
+    """Open a real serial port identified by a stable USB device id (a
+    `/dev/serial/by-id/*` path, or a serial number/hwid substring matched
+    against currently-enumerated ports) rather than a static, OS-assigned
+    port name. Combine with `ReconnectingSerialConnection` to keep finding
+    the same physical device across a cable replug even when the OS hands
+    it a different port name/number afterwards."""
+
+    port = resolve_serial_device_path(device_id, list_ports=list_ports)
+    return open_serial_port(port, baud=baud, timeout_seconds=timeout_seconds)
+
+
+class ReconnectingSerialConnection:
+    """A `SerialLike` that transparently reopens the same physical USB
+    device (by id, via `resolve_serial_device_path`) after a real I/O
+    failure - a cable replug, a controller power-cycle, a USB device
+    re-enumerating under a different port name - instead of staying
+    permanently dead until the whole bridge process is restarted.
+
+    `connect` is the real, injectable "open one connection" callable (in
+    production, `lambda: open_serial_port_by_id(device_id, ...)`; in tests,
+    a fake factory) - this class owns none of the actual device-resolution
+    logic itself, only the reconnect-on-failure behavior, so it stays
+    testable with the exact same in-memory `FakeSerial` style already used
+    across this bridge's test suite.
+
+    A write/readline that raises OSError (what a real unplugged/broken
+    serial device raises) closes the dead underlying connection, attempts
+    exactly one reconnect via `connect()`, and retries the same operation
+    once on the new connection. If `connect()` itself fails (device still
+    not present), the original OSError propagates unchanged - callers
+    (`GrblSerialProbe.query_status`, `GrblRealtimeControl._write`) already
+    fail closed on OSError, so this never weakens the existing safety
+    behavior, it only gives a *future* call a real chance to succeed again
+    once the device comes back.
+    """
+
+    def __init__(self, connect: Callable[[], SerialLike]) -> None:
+        self._connect = connect
+        self._connection: SerialLike | None = None
+
+    def _ensure_connected(self) -> SerialLike:
+        if self._connection is None:
+            self._connection = self._connect()
+        return self._connection
+
+    def _reconnect(self) -> SerialLike:
+        if self._connection is not None:
+            try:
+                self._connection.close()
+            except Exception:  # noqa: BLE001 - closing an already-dead connection must never mask the real error
+                pass
+            self._connection = None
+        self._connection = self._connect()
+        return self._connection
+
+    def write(self, data: bytes) -> object:
+        connection = self._ensure_connected()
+        try:
+            return connection.write(data)
+        except OSError:
+            connection = self._reconnect()
+            return connection.write(data)
+
+    def readline(self) -> bytes:
+        connection = self._ensure_connected()
+        try:
+            return connection.readline()
+        except OSError:
+            connection = self._reconnect()
+            return connection.readline()
+
+    def close(self) -> object:
+        if self._connection is None:
+            return None
+        result = self._connection.close()
+        self._connection = None
+        return result
 
 
 class GrblSerialProbe:

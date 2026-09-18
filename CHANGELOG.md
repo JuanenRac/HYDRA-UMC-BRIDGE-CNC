@@ -6,6 +6,24 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.4] - Reconnect by real USB device id instead of a static serial port name
+
+- `resolve_serial_device_path()` resolves a stable USB device identifier
+  (a Linux `/dev/serial/by-id/*` path, or a serial number/hwid substring
+  matched against currently-enumerated ports) to whatever port name the OS
+  currently has it under - a cable replug (or reboot re-enumerating USB in
+  a different order) reassigning `COM3` to a different device, or moving
+  this one to `COM5`, no longer breaks the connection permanently.
+- `open_serial_port_by_id()` opens a real serial connection resolved this
+  way.
+- `ReconnectingSerialConnection` wraps any `SerialLike` factory and
+  transparently reopens (via the same by-id resolution) after a real
+  `OSError` from `write()`/`readline()`, retrying the failed call once on
+  the healed connection - composes unchanged with `GrblSerialProbe`/
+  `GrblRealtimeControl`, which already fail closed on a real OSError.
+- 10 new tests. 91/91 `unittest` cases pass (`python tools/build_test.py`,
+  up from 81).
+
 ## [0.1.3] - H050/H051: configurable MQTT authentication, and a retained command can no longer replay as a live one
 
 - **H050.** `run_forever()` had no way to authenticate against
