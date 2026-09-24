@@ -107,7 +107,7 @@ class CncMqttBridge:
     def refresh_status(self) -> CncSnapshot:
         """Query real GRBL status now.
 
-        CNC-01:
+        :
         this used to cache its result in `self._last_snapshot` for
         `cycle_start_resume`/`cmd/job` to reuse instead of querying again -
         a real door/E-STOP change between two messages went unnoticed
@@ -118,7 +118,7 @@ class CncMqttBridge:
         than leaving unused dead state a future edit could be tempted to
         read from again.
 
-        REV-005 (a deeper version of the same real gap CNC-01 above
+        (a deeper version of the same real gap above
         already narrowed): the
         `self._estop`/`self._door_closed` callables are passed straight
         through to `query_status()` rather than called here - GRBL's own
@@ -140,7 +140,7 @@ class CncMqttBridge:
         sibling topic under `cmd/` this version does not know about yet
         must never crash the whole message loop.
 
-        H051: `retained` is True when the broker delivered this message
+        `retained` is True when the broker delivered this message
         because of the MQTT retain flag (a `mosquitto_pub -r`-style
         mistake, or any publisher that set it), not because a client just
         published it live. `on_connect()`'s own `subscribe("cmd/#")`
@@ -168,7 +168,7 @@ class CncMqttBridge:
             result = self._realtime.soft_reset(self._connection)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)))]
         if suffix == "cmd/cycle_start_resume":
-            # CNC-01: this used to reuse self._last_snapshot - whatever
+            # this used to reuse self._last_snapshot - whatever
             # was last queried, possibly from a `cmd/status` poll seconds
             # or minutes earlier - instead of re-reading the real,
             # current door/E-STOP state right before authorizing a real
@@ -197,7 +197,7 @@ class CncMqttBridge:
         except (json.JSONDecodeError, BridgeError, UnicodeDecodeError) as error:
             decision = {"allowed": False, "reason": f"malformed job payload: {error}"}
             return MqttPublish(f"{TOPIC_PREFIX}cmd/job/result", json.dumps(decision))
-        # CNC-01 -
+        # -
         # same real gap as cycle_start_resume above: gating a new job
         # against a stale self._last_snapshot could let a door opened (or
         # E-STOP activated) since the last poll go unnoticed. Always
@@ -257,7 +257,7 @@ def run_forever(
     mid-session drop/reconnect on its own, so only the first connect
     needed this.
 
-    H050: `username`/`password` are optional (matching
+    `username`/`password` are optional (matching
     HYDRA-UMC-MQTT-BROKER's own `MQTT_AUTH_JSON` authentication, which is
     itself opt-in) - a broker deployed with authentication required had no
     way to be reached from here at all before this. `password` is only

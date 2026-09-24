@@ -24,16 +24,16 @@ GPL-3.0-or-later - see LICENSE
 - 10 new tests. 91/91 `unittest` cases pass (`python tools/build_test.py`,
   up from 81).
 
-## [0.1.3] - H050/H051: configurable MQTT authentication, and a retained command can no longer replay as a live one
+## [0.1.3] - configurable MQTT authentication, and a retained command can no longer replay as a live one
 
-- **H050.** `run_forever()` had no way to authenticate against
+- **.** `run_forever` had no way to authenticate against
   HYDRA-UMC-MQTT-BROKER's own real, opt-in `MQTT_AUTH_JSON` username/
   password CONNECT authentication - a broker deployed with credentials
   required was simply unreachable from this bridge. New optional
   `username`/`password` keyword arguments call paho-mqtt's own
   `username_pw_set()`; a `password` given without a `username` is
   rejected outright rather than silently connecting unauthenticated.
-- **H051.** `on_connect()`'s `subscribe("cmd/#")` makes the broker replay
+- **.** `on_connect`'s `subscribe("cmd/#")` makes the broker replay
   every currently-retained message on that wildcard immediately - on
   *every* reconnect, not just once at startup. A retained `cmd/job` (or
   any other `cmd/*` topic) would re-trigger a real physical decision with

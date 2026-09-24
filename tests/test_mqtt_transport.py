@@ -23,7 +23,7 @@ class FakeSerial:
 
     def write(self, data: bytes):
         self.written.append(data)
-        # V07-019 (P2): a real
+        # a real
         # pyserial connection's write() returns the real byte count
         # actually written - GrblRealtimeControl._write() now requires
         # exactly that (see its own comment) instead of silently trusting
@@ -43,7 +43,7 @@ class LiveSignals:
     """A real, mutable stand-in for the estop/door_closed/cell_state
     callables CncMqttBridge reads live - lets a test flip the physical
     signal BETWEEN an earlier query and a later command, exactly the real
-    race CNC-01 is about."""
+    race is about."""
 
     def __init__(self, estop=False, door_closed=True, cell_state=CellState.READY):
         self.estop = estop
@@ -99,7 +99,7 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertEqual(connection.written, [b"\x18"])
 
     def test_cycle_start_resume_always_queries_fresh_status_even_if_one_was_cached(self):
-        # CNC-01 regression: this used to reuse whatever refresh_status() last saw
+        # regression: this used to reuse whatever refresh_status last saw
         # instead of re-checking live - even after an explicit earlier
         # refresh_status() call, handle_message() must still issue its OWN
         # real status query right before deciding.
@@ -141,8 +141,8 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertNotIn(b"~", connection.written)
 
     def test_cycle_start_resume_refuses_a_real_door_open_during_the_blocking_status_read_regression_for_rev_005(self):
-        # REV-005 - a deeper
-        # version of CNC-01 above: the real event happens WHILE
+        # - a deeper
+        # version of above: the real event happens WHILE
         # refresh_status()'s own readline() is blocked, not merely between
         # two separate messages. FakeSerial's readline() here flips the
         # live signals as a side effect, modelling the physical event
@@ -206,7 +206,7 @@ class JobCommandTests(unittest.TestCase):
         self.assertTrue(json.loads(publishes[0].payload)["allowed"])
 
     def test_job_refuses_a_real_door_open_between_refresh_and_job_regression_for_cnc_01(self):
-        # CNC-01 regression: _handle_job() had the exact same stale-snapshot gap as
+        # regression: _handle_job had the exact same stale-snapshot gap as
         # cycle_start_resume - door closed + no E-STOP at an earlier poll,
         # then the door opens and E-STOP activates before a new cmd/job
         # arrives. The gate must see the CURRENT machine state, not the one
@@ -237,7 +237,7 @@ class RunForeverTests(unittest.TestCase):
         self.assertIn("paho-mqtt is not installed", str(context.exception))
 
     def test_password_without_username_is_rejected_before_ever_touching_paho_mqtt(self):
-        # H050: catches the most likely real misconfiguration (someone set
+        # catches the most likely real misconfiguration (someone set
         # a password and forgot the username) as a real, immediate error -
         # never a silent unauthenticated connection to a broker that
         # actually requires MQTT_AUTH_JSON credentials.
@@ -249,7 +249,7 @@ class RunForeverTests(unittest.TestCase):
         self.assertIn("password was given without a username", str(context.exception))
 
     def test_configures_broker_credentials_when_given(self):
-        # H050: HYDRA-UMC-MQTT-BROKER's own MQTT_AUTH_JSON authentication
+        # HYDRA-UMC-MQTT-BROKER's own MQTT_AUTH_JSON authentication
         # is real but this bridge previously had no way at all to supply
         # a username/password to reach a broker that requires it.
         try:
@@ -285,7 +285,7 @@ class RunForeverTests(unittest.TestCase):
         fake_client.username_pw_set.assert_not_called()
 
     def test_on_message_passes_the_real_retain_flag_through_to_handle_message(self):
-        # H051 end to end: on_message() is the one place a real
+        # end to end: on_message is the one place a real
         # paho-mqtt MQTTMessage's own `.retain` flag exists - it must
         # reach handle_message() rather than being dropped on the floor,
         # or every retained-command protection below would be dead code
@@ -309,7 +309,7 @@ class RunForeverTests(unittest.TestCase):
 
 
 class RetainedMessageTests(unittest.TestCase):
-    """H051: a real broker replays every currently-retained message on the
+    """a real broker replays every currently-retained message on the
     subscribed wildcard immediately upon (re)subscribe - which happens on
     every reconnect, not just once at startup. None of this bridge's
     `cmd/*` topics are ever meant to be retained by a legitimate live
