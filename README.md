@@ -10,7 +10,7 @@ GPL-3.0-or-later - see LICENSE
 
 # 🔧 HYDRA-UMC-BRIDGE-CNC
 
-<p align="center">🇺🇸 <b>English</b> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a></p>
+<p align="center">🇺🇸 <b>English</b> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 🛑 Fail-Safe Coordination Bridge for CNC Cells
 
@@ -22,7 +22,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **Honesty check - what actually runs today:** the fail-safe cell snapshot and safety gate (`cell.py`'s `CncSnapshot`/`CncCellBridge`, funneling every job through `HYDRA-UMC-SDK`'s own `evaluate_job()`), the read-only GRBL/MTConnect evidence normalizer (`observation.py`), the real GRBL serial transport (`serial_transport.py`'s `GrblSerialProbe`/`GrblRealtimeControl`), and the MQTT command/status transport (`mqtt_transport.py`) are real and covered by 91 passing `unittest` cases (`python tools/build_test.py`), including `tests/test_grbl_emulator.py` running this bridge against a protocol-faithful, hand-written GRBL v1.1 emulator. None of it has touched a real serial port, a real MQTT broker, or an actual CNC controller - `test_serial_transport.py`'s own `FakeSerial` stands in for a physical connection, and `test_mqtt_transport.py` uses a fake broker client the same way. There is no LinuxCNC HAL adapter and no live `run` command yet, because no real controller has been driven - see "Current Status & Next Steps" below, which already says this plainly, and `CHANGELOG.md` for exactly what has shipped so far.
+> **Honesty check - what actually runs today:** the fail-safe cell snapshot and safety gate (`cell.py`'s `CncSnapshot`/`CncCellBridge`, funneling every job through `HYDRA-UMC-SDK`'s own `evaluate_job()`), the read-only GRBL/MTConnect evidence normalizer (`observation.py`), the real GRBL serial transport (`serial_transport.py`'s `GrblSerialProbe`/`GrblRealtimeControl`), and the MQTT command/status transport (`mqtt_transport.py`) are real and covered by 94 passing `unittest` cases (`python tools/build_test.py`), including `tests/test_grbl_emulator.py` running this bridge against a protocol-faithful, hand-written GRBL v1.1 emulator. None of it has touched a real serial port, a real MQTT broker, or an actual CNC controller - `test_serial_transport.py`'s own `FakeSerial` stands in for a physical connection, and `test_mqtt_transport.py` uses a fake broker client the same way. There is no LinuxCNC HAL adapter and no live `run` command yet, because no real controller has been driven - see "Current Status & Next Steps" below, which already says this plainly, and `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -40,6 +40,7 @@ It belongs to the **External Automation Bridges** family: a set of sibling repos
 * ✅ **Real GRBL serial transport:** `serial_transport.py`'s `GrblSerialProbe` opens a real serial connection and queries GRBL's real-time status byte (`?`); `GrblRealtimeControl` sends only GRBL's own real-time control bytes (feed hold, cycle resume, soft reset) — `cycle_start_resume()` is gated on a genuinely `HOLDING` machine, the others are always allowed like `ABORT`. It never streams a G-code program. *(implemented, tested in `tests/test_serial_transport.py`)*
 * ✅ **Non-mutating build/test:** `build-test.bat`/`.sh` compile the source and run the deterministic safety-gate test suite without touching version files or CHANGELOG. *(implemented, see BUILD & RUN below)*
 * 🔜 **LinuxCNC HAL adapter** — deferred; no real CNC controller, HAL pin or robot has been driven yet. *(planned)*
+* ✅ **Repeated idempotency keys:** `CncMqttBridge` accepts an `IdempotencyStore`: a repeated job key gets the answer given the first time instead of being evaluated again. *(implemented, tested in `tests/test_idempotency.py`)*
 
 ---
 
@@ -83,6 +84,7 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_observation.py      # Missing safety evidence fails closed
 │   ├── test_serial_transport.py # Real serial transport against a fake port, incl. fail-closed paths
 │   ├── test_mqtt_transport.py   # MQTT command/status shape tests against a fake broker client
+│   ├── test_idempotency.py      # A repeated idempotency key is answered once
 │   ├── grbl_emulator.py         # Protocol-faithful GRBL v1.1 emulator (realistic test double)
 │   └── test_grbl_emulator.py    # Bridge behaviour against the GRBL v1.1 emulator
 ├── tools/
@@ -102,7 +104,7 @@ HYDRA-UMC-BRIDGE-CNC/
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md / CONTRIBUTING.md / SECURITY.md / SUPPORT.md
 ├── LICENSE / LICENSE.md
-└── README.md / README_*.md      # This file and its 6 translations
+└── README.md / README_*.md      # This file and its 7 translations
 ```
 
 ---
@@ -121,13 +123,13 @@ bash build-test.sh
 bash build.sh
 ```
 
-`build-test` compiles every module under `src/` with `py_compile` and runs the full `unittest` suite discovered under `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py` - 91 tests), proving safe-idle admission, open-door rejection and abort forwarding among everything else covered — it never modifies the repository. `build` runs that same validation first and, only on success, calls `tools/bump_version.py` to synchronize the version across `pyproject.toml`, `hydra-umc.project.json` and `CHANGELOG.md`. There is no live CNC `run` command yet — that requires a validated controller integration.
+`build-test` compiles every module under `src/` with `py_compile` and runs the full `unittest` suite discovered under `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py` - 94 tests), proving safe-idle admission, open-door rejection and abort forwarding among everything else covered — it never modifies the repository. `build` runs that same validation first and, only on success, calls `tools/bump_version.py` to synchronize the version across `pyproject.toml`, `hydra-umc.project.json` and `CHANGELOG.md`. There is no live CNC `run` command yet — that requires a validated controller integration.
 
 ---
 
 ## ✅ Current Status & Next Steps
 
-**Real today:** version `0.1.4`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, strict read-only controller-evidence normalization covering GRBL v1.1's full real status vocabulary including real `Hold:N`/`Door:N` substates (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`) plus MTConnect execution states, a real serial transport (`GrblSerialProbe`/`GrblRealtimeControl`) that can query status and send GRBL's own real-time control bytes over an actual connection - the live door/E-STOP read now happens right after that query's own blocking round trip, never before it, and a real short/zero-byte write is reported as not executed rather than a false success - a ninety-one-test deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
+**Real today:** version `0.1.5`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, strict read-only controller-evidence normalization covering GRBL v1.1's full real status vocabulary including real `Hold:N`/`Door:N` substates (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`) plus MTConnect execution states, a real serial transport (`GrblSerialProbe`/`GrblRealtimeControl`) that can query status and send GRBL's own real-time control bytes over an actual connection - the live door/E-STOP read now happens right after that query's own blocking round trip, never before it, and a real short/zero-byte write is reported as not executed rather than a false success - a ninety-four-test deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
 
 **Integration boundary:** the CNC controller (LinuxCNC or another) retains trajectory, spindle and machine-limit authority at all times; this bridge only ever gates *auxiliary* robot work, never controller motion.
 

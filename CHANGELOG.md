@@ -6,6 +6,11 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.5] - A repeated idempotency key is answered once
+
+- **Idempotency keys.** `CncMqttBridge` accepts an `IdempotencyStore` from HYDRA-UMC-SDK: the first time a job key arrives it is evaluated and its answer kept; a repeat (QoS 1 delivers some twice, a client may retry) gets the same answer and nothing is evaluated again. docs/BRIDGE_CONTRACT.md asked bridges to do this and none did.
+- Three new tests (tests/test_idempotency.py).
+
 ## [0.1.4] - Reconnect by real USB device id instead of a static serial port name
 
 - `resolve_serial_device_path()` resolves a stable USB device identifier
