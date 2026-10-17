@@ -47,6 +47,7 @@ from typing import Callable
 
 from hydra_umc_sdk.bridge_contract import BridgeError, CellState, decision_to_dict, job_from_dict
 from hydra_umc_sdk.job_intake import IdempotencyStore
+from hydra_umc_sdk.mqtt_connection import apply_connection_settings, settings_from_env
 
 from .cell import CncCellBridge, CncSnapshot
 from .serial_transport import GrblRealtimeControl, GrblSerialProbe, SerialLike
@@ -304,8 +305,8 @@ def run_forever(
             client.publish(publish.topic, publish.payload, retain=publish.retain)  # type: ignore[attr-defined]
 
     client = mqtt.Client(client_id=client_id)
-    if username is not None:
-        client.username_pw_set(username, password)
+    # the credentials and TLS of this service's environment (HYDRA_MQTT_*), unless the caller gave a user name explicitly
+    apply_connection_settings(client, settings_from_env(), username=username, password=password)
     client.on_connect = on_connect
     client.on_message = on_message
     connect_with_retry(
