@@ -89,7 +89,8 @@ class RealtimeCommandTests(unittest.TestCase):
     def test_feed_hold_sends_the_real_grbl_byte_and_publishes_a_result(self):
         b, connection, _signals = bridge()
         publishes = b.handle_message(f"{TOPIC_PREFIX}cmd/feed_hold", b"")
-        self.assertEqual(connection.written, [b"!"])
+        # "!" is followed by a status query: the result says what the controller reported afterwards
+        self.assertEqual(connection.written, [b"!", b"?"])
         self.assertEqual(publishes[0].topic, f"{TOPIC_PREFIX}cmd/feed_hold/result")
         self.assertTrue(json.loads(publishes[0].payload)["executed"])
 
@@ -331,7 +332,7 @@ class RetainedMessageTests(unittest.TestCase):
     def test_a_live_non_retained_message_is_unaffected(self):
         b, connection, _signals = bridge()
         publishes = b.handle_message(f"{TOPIC_PREFIX}cmd/feed_hold", b"", retained=False)
-        self.assertEqual(connection.written, [b"!"])
+        self.assertEqual(connection.written, [b"!", b"?"])
         self.assertTrue(json.loads(publishes[0].payload)["executed"])
 
 

@@ -11,8 +11,14 @@ an already-collected status string (`observation.py`). It stays inside the
 exact same boundary this bridge has always documented: it queries real-time
 status and sends only GRBL's own real-time single-byte control characters
 (status query, feed hold, cycle start/resume, soft reset) - it never streams
-a G-code program. LinuxCNC or the native controller keeps all real-time
+a G-code program. The controller (GRBL itself) keeps all real-time
 trajectory, limits, spindle and safety authority, unchanged.
+
+A GRBL controller has ONE serial port: while this module holds it open, no
+other sender (a G-code sender such as UGS, bCNC or CNCjs) can use it. Whoever
+runs the machine's programs has to do it through something that shares the
+port, or this bridge is not the right tool for that machine - see
+docs/BRIDGE_GUIDE.md.
 
 The GRBL-facing logic is written against a small `SerialLike` protocol
 (`write`/`readline`/`close`) rather than importing `pyserial` directly in
@@ -27,6 +33,8 @@ load time.
 from __future__ import annotations
 
 import os
+import threading
+import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
@@ -43,6 +51,12 @@ _STATUS_QUERY = b"?"
 _FEED_HOLD = b"!"
 _CYCLE_START_RESUME = b"~"
 _SOFT_RESET = b"\x18"  # Ctrl-X
+
+# GRBL talks without being asked: the banner after every reset (opening the port resets an Arduino),
+# "ok"/"error:N" for its line channel, "[MSG:...]", "ALARM:n", and the late answer to an earlier "?".
+# The answer to OUR "?" is the first line that looks like a status report, within this many lines or this long.
+_MAX_LINES_PER_QUERY = 16
+_QUERY_DEADLINE_SECONDS = 2.0
 
 
 class SerialLike(Protocol):
@@ -80,7 +94,18 @@ def open_serial_port(port: str, baud: int = 115200, timeout_seconds: float = 1.0
             "pyserial is not installed - install it to talk to a real GRBL controller "
             "(this module's parsing/gating logic works and is tested without it)"
         ) from error
-    return serial.Serial(port, baudrate=baud, timeout=timeout_seconds)
+    # Opening the port with DTR asserted resets an Arduino-based GRBL board (and a running job is lost):
+    # build the object closed, declare the control lines, and only then open it.
+    connection = serial.Serial()
+    connection.port = port
+    connection.baudrate = baud
+    connection.timeout = timeout_seconds
+    connection.dsrdtr = False
+    connection.rtscts = False
+    connection.dtr = False
+    connection.rts = False
+    connection.open()
+    return connection
 
 
 def resolve_serial_device_path(device_id: str, *, list_ports: Callable[[], list] | None = None) -> str:
@@ -168,38 +193,56 @@ class ReconnectingSerialConnection:
     serial device raises) closes the dead underlying connection, attempts
     exactly one reconnect via `connect()`, and retries the same operation
     once on the new connection. If `connect()` itself fails (device still
-    not present), the original OSError propagates unchanged - callers
-    (`GrblSerialProbe.query_status`, `GrblRealtimeControl._write`) already
-    fail closed on OSError, so this never weakens the existing safety
-    behavior, it only gives a *future* call a real chance to succeed again
-    once the device comes back.
+    not present), the failure comes out as an OSError that wraps the cause
+    (`connect()` may raise a RuntimeError for "no such device", which callers
+    do not expect from a port) - callers (`GrblSerialProbe.query_status`,
+    `GrblRealtimeControl._write`) fail closed on it, so this never weakens
+    the existing safety behavior, it only gives a *future* call a real
+    chance to succeed again once the device comes back.
+
+    Several threads may use one connection (a status query on one, a feed
+    hold on another): the lock only guards swapping the connection, never the
+    blocking I/O, so a stop never waits for a read to time out.
     """
 
     def __init__(self, connect: Callable[[], SerialLike]) -> None:
         self._connect = connect
         self._connection: SerialLike | None = None
+        self._lock = threading.Lock()
+
+    def _open(self) -> SerialLike:
+        try:
+            return self._connect()
+        except OSError:
+            raise
+        except Exception as error:  # noqa: BLE001 - "no such device" and the like are a port that is not there
+            raise OSError(f"could not open the serial device: {error}") from error
 
     def _ensure_connected(self) -> SerialLike:
-        if self._connection is None:
-            self._connection = self._connect()
-        return self._connection
+        with self._lock:
+            if self._connection is None:
+                self._connection = self._open()
+            return self._connection
 
-    def _reconnect(self) -> SerialLike:
-        if self._connection is not None:
-            try:
-                self._connection.close()
-            except Exception:  # noqa: BLE001 - closing an already-dead connection must never mask the real error
-                pass
-            self._connection = None
-        self._connection = self._connect()
-        return self._connection
+    def _reconnect(self, failed: SerialLike) -> SerialLike:
+        with self._lock:
+            if self._connection is not None and self._connection is not failed:
+                return self._connection  # another thread has already reopened it
+            if self._connection is not None:
+                try:
+                    self._connection.close()
+                except Exception:  # noqa: BLE001 - closing an already-dead connection must never mask the real error
+                    pass
+                self._connection = None
+            self._connection = self._open()
+            return self._connection
 
     def write(self, data: bytes) -> object:
         connection = self._ensure_connected()
         try:
             return connection.write(data)
         except OSError:
-            connection = self._reconnect()
+            connection = self._reconnect(connection)
             return connection.write(data)
 
     def readline(self) -> bytes:
@@ -207,15 +250,27 @@ class ReconnectingSerialConnection:
         try:
             return connection.readline()
         except OSError:
-            connection = self._reconnect()
+            connection = self._reconnect(connection)
             return connection.readline()
 
+    def reset_input_buffer(self) -> None:
+        """Throw away what the controller has sent that nobody asked for (when the underlying port can)."""
+        connection = self._ensure_connected()
+        discard = getattr(connection, "reset_input_buffer", None)
+        if discard is not None:
+            discard()
+
+    @property
+    def in_waiting(self) -> int:
+        """Bytes already received and not read yet (0 when the underlying port cannot tell)."""
+        with self._lock:
+            connection = self._connection
+        return int(getattr(connection, "in_waiting", 0) or 0)
+
     def close(self) -> object:
-        if self._connection is None:
-            return None
-        result = self._connection.close()
-        self._connection = None
-        return result
+        with self._lock:
+            connection, self._connection = self._connection, None
+        return connection.close() if connection is not None else None
 
 
 class GrblSerialProbe:
@@ -240,13 +295,50 @@ class GrblSerialProbe:
         # blocking call even returned - a real interlock allowed to go
         # stale for the full length of one status query, not just between
         # queries (this project's own already-fixed gap).
+        #
+        # What `readline()` hands back is not necessarily the answer to the "?"
+        # just sent: the banner, "ok"/"error:N", "[MSG:...]", "ALARM:n" and the
+        # late answer to an earlier "?" all come on the same line-oriented
+        # stream. Taking the next line as the answer leaves every later query
+        # one reply behind - a machine that is running would be reported as it
+        # was a query ago. So: throw away what is already waiting, send "?", and
+        # read until a line that IS a status report (`<...>`) turns up.
         try:
+            self._discard_pending_input(connection)
             connection.write(_STATUS_QUERY)
-            line = connection.readline()
-            status_line = line.decode("ascii", errors="replace").strip()
-        except (OSError, ValueError, UnicodeDecodeError):
+            status_line = self._read_status_report(connection)
+        except Exception:  # noqa: BLE001 - whatever goes wrong on the link, the machine is not known to be fine
             return CncSnapshot("", _call_bool(estop, True), False)
         return snapshot_from_grbl_status(status_line, estop=_call_bool(estop, True), door_closed=_call_bool(door_closed, False))
+
+
+    @staticmethod
+    def _discard_pending_input(connection: SerialLike) -> None:
+        discard = getattr(connection, "reset_input_buffer", None)
+        if discard is not None:
+            discard()
+
+    @staticmethod
+    def _is_status_report(line: str) -> bool:
+        return line.startswith("<") and line.endswith(">")
+
+    def _read_status_report(self, connection: SerialLike) -> str:
+        """The status report GRBL sent for our "?", or "" when none arrived (an empty read is the port's own timeout)."""
+        deadline = time.monotonic() + _QUERY_DEADLINE_SECONDS
+        latest = ""
+        for _ in range(_MAX_LINES_PER_QUERY):
+            raw = connection.readline()
+            if not raw:
+                break  # the port timed out: nothing more is coming
+            line = raw.decode("ascii", errors="replace").strip()
+            if self._is_status_report(line):
+                latest = line
+                # a second report already waiting means the first was an old one: the newest is the truth
+                if int(getattr(connection, "in_waiting", 0) or 0) <= 0:
+                    break
+            if time.monotonic() >= deadline:
+                break
+        return latest
 
 
 @dataclass(frozen=True)
@@ -292,7 +384,7 @@ class GrblRealtimeControl:
     def _write(connection: SerialLike, command: bytes, ok_reason: str) -> RealtimeCommandResult:
         try:
             written = connection.write(command)
-        except OSError as error:
+        except Exception as error:  # noqa: BLE001 - a failing link is a command that did not happen, not a crash
             return RealtimeCommandResult(True, False, f"serial write failed: {error}")
         # a real
         # pyserial connection's write() returns the real number of bytes

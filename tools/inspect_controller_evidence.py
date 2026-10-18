@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from hydra_umc_bridge_cnc.observation import snapshot_from_grbl_status, snapshot_from_mapping  # noqa: E402
+from hydra_umc_sdk.bridge_contract import MachineState  # noqa: E402
 
 
 def main() -> int:
@@ -31,8 +32,8 @@ def main() -> int:
             snapshot = snapshot_from_mapping(payload)
         print(json.dumps({"machine_state": snapshot.machine_state().value}, indent=2))
         return 0
-    except (OSError, ValueError, json.JSONDecodeError) as error:
-        print(json.dumps({"machine_state": "offline", "reason": f"evidence inspection failed safely: {error}"}, indent=2))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+        print(json.dumps({"machine_state": MachineState.OFFLINE.value, "reason": f"evidence inspection failed safely: {error}"}, indent=2))
         return 2
 
 

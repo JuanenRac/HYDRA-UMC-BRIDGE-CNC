@@ -8,7 +8,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "hydra-umc-bridge-cnc"
-version = "0.1.6"
+version = "0.1.7"
 description = "Fail-safe HYDRA-UMC CNC coordination boundary"
 requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
@@ -22,7 +22,7 @@ serial = ["pyserial>=3.5"]
 # Only run_forever() needs this - it's imported lazily (see
 # mqtt_transport.py's own comment) so the rest of the package, including
 # every topic-dispatch test, works without it installed.
-mqtt = ["paho-mqtt>=2.0"]
+mqtt = ["paho-mqtt>=2.1,<3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

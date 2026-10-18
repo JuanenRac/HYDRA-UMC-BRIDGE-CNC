@@ -12,4 +12,4 @@ The minimum evidence for an idle snapshot is a literal controller state plus two
 
 Any future controller adapter must authenticate/identify its controller, preserve independent E-STOP and guard authority, and complete bench/HIL validation before it can be connected to a real CNC cell.
 
-For an offline review, run `py tools/inspect_controller_evidence.py evidence.json`. It reads a saved JSON mapping only and emits the canonical SDK machine state; it never opens a serial, HAL or network link.
+For an offline review, run `python3 tools/inspect_controller_evidence.py evidence.json` (`py` instead of `python3` on Windows). It reads a saved JSON mapping only and emits the canonical SDK machine state; it never opens a serial, HAL or network link.

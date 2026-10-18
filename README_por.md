@@ -22,25 +22,26 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **Verificação de honestidade - o que realmente corre hoje:** o instantâneo de célula com falha segura e a porta de segurança (o `CncSnapshot`/`CncCellBridge` de `cell.py`, que encaminha cada trabalho pelo `evaluate_job()` do próprio `HYDRA-UMC-SDK`), o normalizador só de leitura de evidência GRBL/MTConnect (`observation.py`), o transporte série GRBL real (o `GrblSerialProbe`/`GrblRealtimeControl` de `serial_transport.py`) e o transporte MQTT de comandos/estado (`mqtt_transport.py`) são reais e estão cobertos por 98 casos `unittest` que passam (`python tools/build_test.py`), incluindo `tests/test_grbl_emulator.py`, que executa este bridge contra um emulador GRBL v1.1 escrito à mão e fiel ao protocolo. Nada disto tocou numa porta série real, num broker MQTT real nem num controlador CNC verdadeiro: o `FakeSerial` de `test_serial_transport.py` substitui uma ligação física, e `test_mqtt_transport.py` usa um cliente de broker falso do mesmo modo. Não há adaptador HAL do LinuxCNC nem comando `run` vivo, porque nenhum controlador real foi acionado; ver «Estado atual e próximos passos» abaixo, que já o diz com clareza, e `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
+> **Verificação de honestidade - o que realmente corre hoje:** o instantâneo de célula com falha segura e a porta de segurança (o `CncSnapshot`/`CncCellBridge` de `cell.py`, que encaminha cada trabalho pelo `evaluate_job()` do próprio `HYDRA-UMC-SDK`), o normalizador só de leitura de evidência GRBL/MTConnect (`observation.py`), o transporte série GRBL real (o `GrblSerialProbe`/`GrblRealtimeControl` de `serial_transport.py`) e o transporte MQTT de comandos/estado (`mqtt_transport.py`) são reais e estão cobertos por 123 casos `unittest` que passam (`python tools/build_test.py`), incluindo `tests/test_grbl_emulator.py`, que executa este bridge contra um emulador GRBL v1.1 escrito à mão e fiel ao protocolo. Nada disto tocou numa porta série real, num broker MQTT real nem num controlador CNC verdadeiro: o `FakeSerial` de `test_serial_transport.py` substitui uma ligação física, e `test_mqtt_transport.py` usa um cliente de broker falso do mesmo modo. Não há adaptador HAL do LinuxCNC nem comando `run` vivo, porque nenhum controlador real foi acionado; ver «Estado atual e próximos passos» abaixo, que já o diz com clareza, e `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
 
 ---
 
 ## 1. 🛠️ VISÃO TÉCNICA GERAL
 
-O **HYDRA-UMC-BRIDGE-CNC** é o bridge de alto nível entre as células CNC e os auxiliares robóticos do HYDRA-UMC: carga, descarga, manuseamento de peças e tarefas auxiliares supervisionadas. Nunca se torna um controlador de trajetórias em tempo real: o controlador CNC (LinuxCNC ou outro) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina.
+O **HYDRA-UMC-BRIDGE-CNC** é o bridge de alto nível entre as células CNC e os auxiliares robóticos do HYDRA-UMC: carga, descarga, manuseamento de peças e tarefas auxiliares supervisionadas. Nunca se torna um controlador de trajetórias em tempo real: o controlador CNC (GRBL hoje; o LinuxCNC está previsto) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina.
 
 Pertence à família de **Bridges de automação externa**: um conjunto de repositórios irmãos (CNC, LASER, OPENPNP, PRINTER3D, ROS2) que falam todos o mesmo contrato de segurança partilhado do `HYDRA-UMC-SDK`, de modo que nenhum bridge possa inventar a sua própria definição de «seguro para trabalhar».
 
 ### Funcionalidades principais:
 * ✅ **Instantâneo real de célula com falha segura:** o `CncSnapshot.machine_state()` de `cell.py` verifica a paragem de emergência e o estado da porta *antes* de olhar para qualquer coisa que o controlador comunique: uma paragem de emergência ativada ou uma porta aberta resolvem-se sempre em `SAFE_STOP`, diga o que disser `controller_state`. *(implementado, testado em `tests/test_cell.py`)*
-* ✅ **Porta de segurança partilhada real:** cada trabalho observado é reavaliado pelo `evaluate_job()` do `bridge_contract` do `HYDRA-UMC-SDK`, a mesma porta que usam todos os bridges irmãos e o HYDRA-UMC-SERVER. *(implementado)*
-* ✅ **Mapeamento de estados conservador:** só `IDLE` se trata como inativo; `RUN`/`RUNNING`/`HOLD` correspondem a `RUNNING`, `FAULT`/`ERROR`/`OFF` correspondem a `FAULT` e tudo o que não se reconhece volta a `OFFLINE`, nunca a um estado que permitiria trabalho produtivo. *(implementado)*
+* ✅ **Porta de segurança partilhada real:** cada trabalho observado é reavaliado pelo `evaluate_job()` do `bridge_contract` do `HYDRA-UMC-SDK`, a mesma porta que usam todos os bridges irmãos. *(implementado)*
+* ✅ **Mapeamento de estados conservador:** só `IDLE` se trata como inativo; `RUN`/`RUNNING`/`JOG`/`HOME` correspondem a `RUNNING`, `FAULT`/`ERROR`/`OFF`/`ALARM` correspondem a `FAULT` e tudo o que não se reconhece volta a `OFFLINE`, nunca a um estado que permitiria trabalho produtivo. (`HOLD` → `HOLDING`; `DOOR` → `SAFE_STOP`) *(implementado)*
 * ✅ **Evidência só de leitura do controlador:** `observation.py` normaliza de forma estrita a evidência de mapeamento local e as linhas de estado GRBL fornecidas; sinais de paragem de emergência/porta omitidos ou não booleanos falham de forma segura. *(implementado, testado em `tests/test_observation.py`)*
 * ✅ **Transporte série GRBL real:** o `GrblSerialProbe` de `serial_transport.py` abre uma ligação série real e consulta o byte de estado em tempo real do GRBL (`?`); o `GrblRealtimeControl` envia apenas os bytes de controlo em tempo real próprios do GRBL (retenção de avanço, retoma de ciclo, reinício suave): `cycle_start_resume()` só se permite com uma máquina genuinamente em `HOLDING` e os outros permitem-se sempre, como `ABORT`. Nunca transmite um programa de G-code. *(implementado, testado em `tests/test_serial_transport.py`)*
 * ✅ **Compilação/teste que não altera nada:** `build-test.bat`/`.sh` compilam o código-fonte e executam a suíte determinista da porta de segurança sem tocar nos ficheiros de versão nem no CHANGELOG. *(implementado, ver COMPILAR E EXECUTAR abaixo)*
 * 🔜 **Adaptador HAL do LinuxCNC:** adiado; ainda não se acionou nenhum controlador CNC, pino HAL ou robô reais. *(planeado)*
 * ✅ **Chaves de idempotência repetidas:** `CncMqttBridge` aceita um `IdempotencyStore`: uma chave de trabalho repetida recebe a resposta dada da primeira vez em vez de ser avaliada de novo. *(implementado, testado em `tests/test_idempotency.py`)*
+* ✅ **Respostas de estado alinhadas, série com falha segura, ciclo MQTT blindado:** a consulta de estado descarta o que já esperava, envia `?` e lê até chegar um relatório de estado real (`<...>`): o banner, `ok`, `[MSG:...]` e `ALARM:n` que o GRBL envia sem que lhos peçam deixam de atrasar cada consulta seguinte uma resposta; um dispositivo USB em falta (ou qualquer falha da ligação) falha de forma segura em vez de terminar o bridge, e a porta é aberta sem ativar o DTR; `cmd/feed_hold` indica o que o controlador disse depois (`controller_state_after`, `confirmed`), e `cmd/feed_hold` e `cmd/soft_reset` correm numa faixa própria, pelo que uma consulta de estado nunca os atrasa; uma carga demasiado grande (mais de 16 KiB), ilegível ou com JSON profundamente aninhado, e qualquer falha inesperada, recebem uma recusa no tópico de resultado e nunca terminam o ciclo; as respostas de `cmd/job` indicam `"mode": "gate-only"` e um ABORT por aí diz que nada foi parado; o estado inclui `observed_at` e o bridge anuncia-se num tópico `availability` com Last Will. O GRBL tem UMA só porta série: enquanto este bridge a mantiver aberta, nenhum emissor de G-code a pode usar (ver `docs/BRIDGE_GUIDE.md`). *(implementado, testado em `tests/test_hardening.py`)*
 
 ---
 
@@ -50,8 +51,7 @@ Pertence à família de **Bridges de automação externa**: um conjunto de repos
 flowchart LR
     CNC["Controlador CNC / HAL<br/>(estado, E-STOP, porta)"] --> BRIDGE["BRIDGE-CNC<br/>CncSnapshot.machine_state()"]
     BRIDGE -- "BridgeJob + MachineState observado" --> SDK["HYDRA-UMC-SDK<br/>evaluate_job()"]
-    SDK -- GateDecision --> SERVER["HYDRA-UMC-SERVER"]
-    SERVER -- "trabalho / abortar" --> MCU["MCU + segurança da célula"]
+    SDK -- GateDecision --> RESULT["MQTT: cmd/job/result"]
 ```
 
 ---
@@ -62,7 +62,7 @@ flowchart LR
 * **Porque o mapeamento do estado do controlador é conservador de propósito.** Só a cadeia literal `IDLE` corresponde a `MachineState.IDLE`. Todo o valor não reconhecido volta a `OFFLINE`, nunca a algo que permitisse trabalho auxiliar: um estado de controlador desconhecido trata-se como «não sei», não como «provavelmente está bem».
 * **Porque o bridge constrói um novo `BridgeJob` e delega no `evaluate_job()` partilhado em vez de escrever a sua própria lógica de aceitar/rejeitar.** Os cinco Bridges de automação externa (CNC, LASER, OPENPNP, PRINTER3D, ROS2) reutilizam exatamente o mesmo `bridge_contract` do `HYDRA-UMC-SDK`, de modo que o que conta como «seguro para iniciar um trabalho» não pode divergir em silêncio entre eles.
 * **Porque o adaptador HAL do LinuxCNC ainda não está neste repositório.** Ligar pinos HAL reais é um passo de integração de hardware/software que tem de se validar contra um controlador verdadeiro; afirmá-lo aqui antes dessa validação seria uma afirmação que este núcleo local não consegue sustentar.
-* **Como se encaixa no resto do ecossistema.** O BRIDGE-CNC fica entre o controlador CNC e o `HYDRA-UMC-SDK` → `HYDRA-UMC-SERVER` → segurança do MCU/célula: coordena o trabalho auxiliar do robô em redor da CNC e não substitui nem anula a autoridade de segurança do próprio controlador.
+* **Como se encaixa no resto do ecossistema.** O BRIDGE-CNC fica entre o controlador CNC e o `HYDRA-UMC-SDK` → `HYDRA-UMC-MQTT-BROKER` → segurança do MCU/célula: coordena o trabalho auxiliar do robô em redor da CNC e não substitui nem anula a autoridade de segurança do próprio controlador.
 
 Os auxiliares de observação são normalizadores de evidência, não adaptadores de controlador: não abrem ligações HAL, série nem de rede. O [Limite de evidência do controlador](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) define a validação exigida antes de uma integração real com um controlador.
 
@@ -87,7 +87,8 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_mqtt_environment.py # As credenciais MQTT e o TLS do ambiente do serviço chegam ao cliente
 │   ├── test_idempotency.py      # Uma chave de idempotência repetida é respondida uma só vez
 │   ├── grbl_emulator.py         # Emulador GRBL v1.1 fiel ao protocolo (dublê de teste realista)
-│   └── test_grbl_emulator.py    # Comportamento do bridge contra o emulador GRBL v1.1
+│   ├── test_grbl_emulator.py    # Comportamento do bridge contra o emulador GRBL v1.1
+│   └── test_hardening.py        # Respostas de estado alinhadas, cabo desligado, confirmação da retenção, cargas hostis
 ├── tools/
 │   ├── build_test.py            # Executor de compilação + testes que não altera nada (build-test.bat/.sh)
 │   ├── bump_version.py          # Sincroniza pyproject.toml, o manifesto e CHANGELOG.md
@@ -124,15 +125,15 @@ bash build-test.sh
 bash build.sh
 ```
 
-`build-test` compila com `py_compile` cada módulo em `src/` e executa a suíte `unittest` completa descoberta em `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py` - 98 testes), que prova, entre tudo o resto que cobre, a admissão com inatividade segura, a rejeição por porta aberta e o encaminhamento de aborto; nunca modifica o repositório. `build` executa primeiro essa mesma validação e, só se correr bem, chama `tools/bump_version.py` para sincronizar a versão em `pyproject.toml`, `hydra-umc.project.json` e `CHANGELOG.md`. Ainda não há comando `run` de CNC viva: exige uma integração validada com um controlador.
+`build-test` compila com `py_compile` cada módulo em `src/` e executa a suíte `unittest` completa descoberta em `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 123 testes), que prova, entre tudo o resto que cobre, a admissão com inatividade segura, a rejeição por porta aberta e o encaminhamento de aborto; nunca modifica o repositório. `build` executa primeiro essa mesma validação e, só se correr bem, chama `tools/bump_version.py` para sincronizar a versão em `pyproject.toml`, `hydra-umc.project.json` e `CHANGELOG.md`. Ainda não há comando `run` de CNC viva: exige uma integração validada com um controlador.
 
 ---
 
 ## ✅ Estado atual e próximos passos
 
-**Real hoje:** versão `0.1.6`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de noventa e quatro testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
+**Real hoje:** versão `0.1.7`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de 123 testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
 
-**Fronteira de integração:** o controlador CNC (LinuxCNC ou outro) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina; este bridge apenas regula o trabalho robótico *auxiliar*, nunca o movimento do controlador.
+**Fronteira de integração:** o controlador CNC (GRBL hoje; o LinuxCNC está previsto) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina; este bridge apenas regula o trabalho robótico *auxiliar*, nunca o movimento do controlador.
 
 **Ainda por fazer:** nenhum controlador CNC, pino HAL do LinuxCNC ou robô reais foi acionado: escolher e validar um adaptador HAL concreto é um passo de integração de hardware/software que vem depois de a máquina e a sua interface documentada estarem disponíveis.
 
@@ -143,7 +144,7 @@ bash build.sh
 Este projeto faz parte do ecossistema de robótica HYDRA-UMC do mesmo autor (JuanenRac / Electro Hobby 3D). Vale a pena conhecê-los, porque um pedido pode ser, na verdade, sobre um destes e não sobre este repositório.
 
 **Projeto-mãe**
-- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — o verdadeiro backend sem interface (REST/WebSocket) com que falam todos os clientes de controlo; a fronteira autenticada do ecossistema a que este bridge reporta depois de cada comando ter passado pela porta de segurança local do próprio bridge.
+- **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — o verdadeiro backend sem interface (REST/WebSocket) com que falam todos os clientes de controlo; este bridge não o chama: responde por MQTT, através do HYDRA-UMC-MQTT-BROKER, a quem comanda a célula.
 
 **Projetos irmãos** — também falam com a API do próprio HYDRA-UMC-SERVER, cada um como cliente próprio
 - **[HYDRA-UMC-STUDIO](https://github.com/JuanenRac/HYDRA-UMC-STUDIO)** — painel web de controlo com visualização 3D em tempo real de vários robôs.
@@ -246,5 +247,5 @@ Este projeto faz parte do ecossistema de robótica HYDRA-UMC do mesmo autor (Jua
 📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
 ## 📜 LICENÇA
-GPL-3.0 - consulte LICENSE para mais detalhes.
+GPL-3.0-or-later - consulte LICENSE para mais detalhes.
 

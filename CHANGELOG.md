@@ -6,6 +6,21 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.7] - The status reply that is read is the one that was asked for, and a missing cable fails closed
+
+- **The status reply lines up with the question.** GRBL talks without being asked: the banner after every reset (opening the port resets an Arduino), `ok`/`error:N`, `[MSG:...]`, `ALARM:n`, and the late answer to an earlier `?`. The bridge used to take the next line as the answer, so once one extra line was in the buffer every query returned the previous query's reply (a machine that was running could be reported idle). It now discards what is already waiting, sends `?` and reads until a line that is a status report (`<...>`) arrives, keeping the newest one when several are waiting; no report is `OFFLINE`.
+- **A missing cable no longer ends the bridge.** `ReconnectingSerialConnection` turned "no such device" into a `RuntimeError` that escaped the `OSError` handling and ended the MQTT loop at the very moment a feed hold was needed. Any failure to (re)open the port is now an `OSError` that wraps the cause, and the status query and the real-time commands fail closed on any failure. Two threads that see the same dead port reopen it once.
+- **No reset when the port opens.** The port is created closed, DTR/RTS and flow control are declared off, and only then is it opened (an Arduino-based GRBL board resets on DTR).
+- **A feed hold says what the controller reported.** After `!` the bridge asks for the status and `cmd/feed_hold/result` carries `controller_state_after` and `confirmed`; "a byte was written" is no longer read as "the machine stopped". One status query at a time uses the serial port.
+- **A stop never waits.** Messages are handled off the network thread; `cmd/feed_hold` and `cmd/soft_reset` have a lane of their own, so a status query waiting for the controller does not delay them.
+- **The loop survives anything a client sends.** Deeply nested JSON, a payload larger than 16 KiB, an unreadable payload and any unexpected failure while handling a message are answered with a refusal on the result topic instead of ending `loop_forever()`.
+- **`cmd/job` answers say what they are.** The result carries `"mode": "gate-only"`; an `ABORT` says `"forwarded": false` and that nothing was stopped, and points to `cmd/feed_hold`. A failure after the idempotency key was claimed leaves an explicit answer for the key.
+- **A retained state can be judged.** `state` carries `observed_at` (epoch milliseconds); `availability` is `online` once connected and the broker publishes `offline` (Last Will) when the bridge dies.
+- **paho-mqtt.** The client uses the version 2 callback API, which also starts with paho-mqtt 2.0; the extra now requires `paho-mqtt>=2.1,<3`.
+- `tools/inspect_controller_evidence.py` reports the canonical `OFFLINE` value on failure; the unused `subprocess` import of `tools/ci_validate.py` is gone; `LICENSE` now carries the complete GPL-3.0 text.
+- README (all eight languages) and `docs/` updated: the state mapping (`HOLD` is `HOLDING`), test counts and test file list, the single-serial-port model explained, no LinuxCNC claim, no HYDRA-UMC-SERVER path that does not exist, and the existing command path acknowledged in the guide.
+- 25 new tests (`tests/test_hardening.py`).
+
 ## [0.1.6] - Connects to a broker that demands credentials: user, password and TLS from the environment
 
 - The MQTT client now takes its credentials and TLS from the environment of the service (`HYDRA_MQTT_USERNAME`, `HYDRA_MQTT_PASSWORD` or `HYDRA_MQTT_PASSWORD_FILE`, `HYDRA_MQTT_TLS_CA`) through `hydra_umc_sdk.mqtt_connection`, so it can reach a production HYDRA-UMC-MQTT-BROKER, which refuses anonymous clients and evaluates its ACL for the identity of the credential.
