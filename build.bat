@@ -5,6 +5,10 @@ REM Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 REM GPL-3.0-or-later - see LICENSE
 REM =============================================================================
 setlocal
+rem Keep the window open for people, never in automation (CI / HYDRA_UMC_CI).
+set "KEEP_OPEN=pause"
+if defined CI set "KEEP_OPEN=ver >nul"
+if "%HYDRA_UMC_CI%"=="1" set "KEEP_OPEN=ver >nul"
 cd /d "%~dp0"
 echo.
 echo *******************************************************************************
@@ -19,9 +23,9 @@ where py >nul 2>&1
 if errorlevel 1 (python tools\bump_version.py) else (py -3 tools\bump_version.py)
 if errorlevel 1 goto :error
 echo BUILD=PASS. Version, manifest and CHANGELOG were synchronized.
-pause
+%KEEP_OPEN%
 exit /b 0
 :error
 echo BUILD FAILED. No version increment follows a failed validation.
-pause
+%KEEP_OPEN%
 exit /b 1
