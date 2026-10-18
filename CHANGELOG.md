@@ -6,6 +6,11 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.9]
+
+- Successful incremental build: synchronized package metadata and `hydra-umc.project.json`.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.1.8] - Maturity lowered to functional
 - Maturity is functional: the code, tests and documentation are in place, but nothing here has been verified on real hardware yet, so the manifest no longer claims the established level.
 
@@ -20,7 +25,7 @@ GPL-3.0-or-later - see LICENSE
 - **`cmd/job` answers say what they are.** The result carries `"mode": "gate-only"`; an `ABORT` says `"forwarded": false` and that nothing was stopped, and points to `cmd/feed_hold`. A failure after the idempotency key was claimed leaves an explicit answer for the key.
 - **A retained state can be judged.** `state` carries `observed_at` (epoch milliseconds); `availability` is `online` once connected and the broker publishes `offline` (Last Will) when the bridge dies.
 - **paho-mqtt.** The client uses the version 2 callback API, which also starts with paho-mqtt 2.0; the extra now requires `paho-mqtt>=2.1,<3`.
-- `tools/inspect_controller_evidence.py` reports the canonical `OFFLINE` value on failure; the unused `subprocess` import of `tools/ci_validate.py` is gone; `LICENSE` now carries the complete GPL-3.0 text.
+- `tools/inspect_controller_evidence.py` reports the canonical `OFFLINE` value on failure; the unused `subprocess` import of `tools/ci_validate.py` is gone; `LICENSE` now carries the complete GPL-3.0-or-later text.
 - README (all eight languages) and `docs/` updated: the state mapping (`HOLD` is `HOLDING`), test counts and test file list, the single-serial-port model explained, no LinuxCNC claim, no HYDRA-UMC-SERVER path that does not exist, and the existing command path acknowledged in the guide.
 - 25 new tests (`tests/test_hardening.py`).
 
