@@ -26,6 +26,17 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
+## 📋 Num relance
+
+| | |
+|---|---|
+| Versão | `0.1.9` |
+| Maturidade | Funcional |
+| Testes | 123 (`python tools/build_test.py`) |
+| Tecnologia | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
+| Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
+| Em hardware real | Só simulado: testado com emuladores, dublês de teste ou simuladores; não há registo de execução em hardware real para esta versão |
+
 ## 1. 🛠️ VISÃO TÉCNICA GERAL
 
 O **HYDRA-UMC-BRIDGE-CNC** é o bridge de alto nível entre as células CNC e os auxiliares robóticos do HYDRA-UMC: carga, descarga, manuseamento de peças e tarefas auxiliares supervisionadas. Nunca se torna um controlador de trajetórias em tempo real: o controlador CNC (GRBL hoje; o LinuxCNC está previsto) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina.
