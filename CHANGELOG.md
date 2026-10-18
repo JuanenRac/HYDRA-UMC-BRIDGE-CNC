@@ -6,6 +6,9 @@ GPL-3.0-or-later - see LICENSE
 
 # Changelog
 
+## [0.1.8] - Maturity lowered to functional
+- Maturity is functional: the code, tests and documentation are in place, but nothing here has been verified on real hardware yet, so the manifest no longer claims the established level.
+
 ## [0.1.7] - The status reply that is read is the one that was asked for, and a missing cable fails closed
 
 - **The status reply lines up with the question.** GRBL talks without being asked: the banner after every reset (opening the port resets an Arduino), `ok`/`error:N`, `[MSG:...]`, `ALARM:n`, and the late answer to an earlier `?`. The bridge used to take the next line as the answer, so once one extra line was in the buffer every query returned the previous query's reply (a machine that was running could be reported idle). It now discards what is already waiting, sends `?` and reads until a line that is a status report (`<...>`) arrives, keeping the newest one when several are waiting; no report is `OFFLINE`.
