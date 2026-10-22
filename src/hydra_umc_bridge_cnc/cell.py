@@ -72,4 +72,4 @@ class CncCellBridge:
 
     def plan(self, job: BridgeJob, cell_state: CellState, cnc: CncSnapshot) -> GateDecision:
         observed = BridgeJob(job.job_id, job.idempotency_key, job.source, job.phase, cnc.machine_state(), job.parameters)
-        return evaluate_job(observed, cell_state)
+        return evaluate_job(observed, cell_state, cnc.machine_state())
