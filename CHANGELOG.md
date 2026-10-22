@@ -1,10 +1,6 @@
-<!-- =============================================================================
-HYDRA-UMC-BRIDGE-CNC - Change history
-Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-GPL-3.0-or-later - see LICENSE
-============================================================================= -->
-
 # Changelog
+
+All notable changes to this project are documented here.
 
 ## [Unreleased]
 
