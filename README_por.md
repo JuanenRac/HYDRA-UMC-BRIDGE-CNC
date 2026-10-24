@@ -32,9 +32,9 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Versão | `0.1.9` |
+| Versão | `0.2.0` |
 | Maturidade | Funcional |
-| Testes | 206 (`python tools/build_test.py`) |
+| Testes | 123 (`python tools/build_test.py`) |
 | Tecnologia | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Só simulado: testado com emuladores, dublês de teste ou simuladores; não há registo de execução em hardware real para esta versão |
@@ -152,7 +152,7 @@ bash build.sh
 
 ## ✅ Estado atual e próximos passos
 
-**Real hoje:** versão `0.1.9`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de 206 testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
+**Real hoje:** versão `0.2.0`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de 206 testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
 
 **Fronteira de integração:** o controlador CNC (GRBL, LinuxCNC ou o que está por trás do CNCjs) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina; este bridge apenas regula o trabalho robótico *auxiliar*, nunca o movimento do controlador.
 

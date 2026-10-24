@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.2.0] - Controller links and spindle gate
 
 - **Controller links.** The bridge talks to its machine through `ControllerLink`: GRBL on a serial port (the default), a LinuxCNC installation (`linuxcnc_link.py`: reads `linuxcnc.stat`, sends only pause, abort and resume through `linuxcnc.command`, never runs a program) and a CNCjs server that owns the port (`cncjs_link.py`: reads its `controller:state` broadcast and sends only `feedhold`, `reset` and `cyclestart`, so the bridge works beside the sender that runs the programs). A resume needs a READY cell and a machine that is really holding on every link, and an old or missing reading is never an idle machine. Tested against `SimulatedLinuxcnc` and `SimulatedCncjs`; neither has touched a real LinuxCNC or CNCjs.
 - **Spindle gate.** A load or an unload is refused when the controller is idle but reports a turning spindle or a moving feed. `HYDRA_UMC_CNC_SPINDLE_GATE`: `off`, `when_known` (default) or `required`. The snapshot now carries the spindle speed, the feed rate, the machine and work positions, the work offset and the overrides of the status report; a field the controller did not send is `None`, never zero.
@@ -15,6 +15,10 @@ All notable changes to this project are documented here.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.
 - The SDK is now fetched at a release tag instead of the main branch, so a change of the SDK cannot break this repository by itself.
+
+## [0.2.0]
+
+- Successful incremental build: synchronized package metadata and `hydra-umc.project.json`.
 
 ## [0.1.9]
 

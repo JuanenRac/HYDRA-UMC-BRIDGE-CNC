@@ -32,9 +32,9 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| 版本 | `0.1.9` |
+| 版本 | `0.2.0` |
 | 成熟度 | 可用 |
-| 测试 | 206 (`python tools/build_test.py`) |
+| 测试 | 123 (`python tools/build_test.py`) |
 | 技术栈 | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 仅模拟：使用模拟器、替身或仿真测试；此版本没有在真实硬件上运行的记录 |
@@ -152,7 +152,7 @@ bash build.sh
 
 ## ✅ 当前状态与后续步骤
 
-**目前真实的部分:** 版本 `0.1.9`,一个已在本地测试过的故障安全单元协调器(`CncSnapshot` + `CncCellBridge`),依托 `HYDRA-UMC-SDK` 的共享任务门控,包含严格的只读控制器证据标准化,覆盖 GRBL v1.1 完整的真实状态词汇表,包括真实的 `Hold:N`/`Door:N` 子状态(`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)以及 MTConnect 执行状态,一个真实的串行传输层(`GrblSerialProbe`/`GrblRealtimeControl`),可通过真实连接查询状态并发送 GRBL 自身的实时控制字节——门锁/急停的实时读取现在发生在该查询自身的阻塞式往返完成之后,而不是之前;真实的短写入或零字节写入会被报告为未执行,而不是虚假的成功——配有确定性的206项 `unittest` 测试套件,以及已接入 CI 并带 SDK 检出的非变更式 build-test 脚本。
+**目前真实的部分:** 版本 `0.2.0`,一个已在本地测试过的故障安全单元协调器(`CncSnapshot` + `CncCellBridge`),依托 `HYDRA-UMC-SDK` 的共享任务门控,包含严格的只读控制器证据标准化,覆盖 GRBL v1.1 完整的真实状态词汇表,包括真实的 `Hold:N`/`Door:N` 子状态(`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`)以及 MTConnect 执行状态,一个真实的串行传输层(`GrblSerialProbe`/`GrblRealtimeControl`),可通过真实连接查询状态并发送 GRBL 自身的实时控制字节——门锁/急停的实时读取现在发生在该查询自身的阻塞式往返完成之后,而不是之前;真实的短写入或零字节写入会被报告为未执行,而不是虚假的成功——配有确定性的206项 `unittest` 测试套件,以及已接入 CI 并带 SDK 检出的非变更式 build-test 脚本。
 
 **集成边界:** CNC 控制器(GRBL、LinuxCNC 或 CNCjs 背后的控制器)始终保留对轨迹、主轴和机床限位的控制权;本桥接只负责门控*辅助*机器人工作,绝不涉及控制器自身的运动。
 
