@@ -122,12 +122,17 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_controllers.py      # Puerta del husillo, enlaces LinuxCNC y CNCjs contra sus simulaciones, vista MTConnect
 │   ├── grbl_emulator.py         # Emulador de GRBL v1.1 fiel al protocolo (doble de prueba realista)
 │   ├── test_grbl_emulator.py    # Comportamiento del bridge frente al emulador GRBL v1.1
-│   └── test_hardening.py        # Respuestas de estado alineadas, cable caído, confirmación de la retención, cargas hostiles
+│   ├── test_hardening.py        # Respuestas de estado alineadas, cable caído, confirmación de la retención, cargas hostiles
+│   └── test_edge_cases.py       # Casos límite de la carga útil, enrutado del carril de parada y el enlace serie que se reconecta
 ├── tools/
 │   ├── build_test.py            # Compilador + ejecutor de pruebas no mutante (build-test.bat/.sh)
 │   ├── bump_version.py          # Sincroniza pyproject.toml, manifiesto y CHANGELOG.md
 │   ├── ci_validate.py           # Línea base de CI sin dependencias y no destructiva (usada por .github/workflows/ci.yml)
-│   └── inspect_controller_evidence.py # Normaliza un archivo JSON de evidencia local guardado (sin abrir enlace)
+│   ├── inspect_controller_evidence.py # Normaliza un archivo JSON de evidencia local guardado (sin abrir enlace)
+│   ├── _doc_policy.py                 # Reglas de documentación compartidas por la familia (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
+│   ├── _readme_parity.py              # Comprobación de que los ocho README comparten estructura (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
+│   ├── hydra_project_tool.py          # Los mismos comandos en todos los repositorios: validate, test, ci, version, status, bump
+│   └── extra_build_steps.py           # Los pasos de compilación propios de este repositorio además de la prueba de compilación compartida (sus tests unitarios)
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # Alcance, plataformas compatibles, scripts, puerta de aceptación de hardware
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # Qué cuenta como evidencia de seguridad real y qué se niega a inferir este bridge

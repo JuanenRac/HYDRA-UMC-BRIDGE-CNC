@@ -122,12 +122,17 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_controllers.py      # Spindel-Gate, LinuxCNC- und CNCjs-Anbindung gegen ihre Simulationen, MTConnect-Sicht
 │   ├── grbl_emulator.py         # Protokolltreuer GRBL v1.1-Emulator (realistischer Test-Double)
 │   ├── test_grbl_emulator.py    # Bridge-Verhalten gegenüber dem GRBL v1.1-Emulator
-│   └── test_hardening.py        # Passende Statusantworten, totes Kabel, Bestätigung des Haltens, feindliche Nutzlasten
+│   ├── test_hardening.py        # Passende Statusantworten, totes Kabel, Bestätigung des Haltens, feindliche Nutzlasten
+│   └── test_edge_cases.py       # Randfälle der Nutzlast, Routing der Stopp-Spur und die sich neu verbindende serielle Verbindung
 ├── tools/
 │   ├── build_test.py            # Nicht-mutierender Compiler + Testläufer (build-test.bat/.sh)
 │   ├── bump_version.py          # Synchronisiert pyproject.toml, Manifest und CHANGELOG.md
 │   ├── ci_validate.py           # Abhängigkeitsfreie, nicht-destruktive CI-Basislinie (verwendet von .github/workflows/ci.yml)
-│   └── inspect_controller_evidence.py # Normalisiert eine gespeicherte lokale Evidenz-JSON-Datei (keine Verbindung geöffnet)
+│   ├── inspect_controller_evidence.py # Normalisiert eine gespeicherte lokale Evidenz-JSON-Datei (keine Verbindung geöffnet)
+│   ├── _doc_policy.py                 # Von der Familie geteilte Dokumentationsregeln (Kopie der von HYDRA-UMC-SDK, synchron gehalten)
+│   ├── _readme_parity.py              # Prüfung, dass die acht READMEs dieselbe Struktur haben (Kopie der von HYDRA-UMC-SDK, synchron gehalten)
+│   ├── hydra_project_tool.py          # Dieselben Befehle in jedem Repository: validate, test, ci, version, status, bump
+│   └── extra_build_steps.py           # Die eigenen Build-Schritte dieses Repositorys neben dem gemeinsamen Build-Test (seine Unit-Tests)
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # Umfang, kompatible Plattformen, Skripte, Hardware-Abnahmegatter
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # Was als echter Sicherheitsnachweis zählt und was diese Bridge nicht ableitet

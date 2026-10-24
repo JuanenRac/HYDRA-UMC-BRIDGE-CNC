@@ -122,12 +122,17 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_controllers.py      # 主轴门控、针对模拟器的 LinuxCNC 与 CNCjs 连接、MTConnect 视图
 │   ├── grbl_emulator.py         # 协议忠实的 GRBL v1.1 模拟器（真实的测试替身）
 │   ├── test_grbl_emulator.py    # 针对 GRBL v1.1 模拟器的 bridge 行为
-│   └── test_hardening.py        # 对齐的状态回复、断开的线缆、进给保持确认、恶意负载
+│   ├── test_hardening.py        # 对齐的状态回复、断开的线缆、进给保持确认、恶意负载
+│   └── test_edge_cases.py       # 载荷边界情况、停止通道路由和可重连的串行链路
 ├── tools/
 │   ├── build_test.py            # 非变更式编译 + 测试运行器 (build-test.bat/.sh)
 │   ├── bump_version.py          # 同步 pyproject.toml、清单和 CHANGELOG.md
 │   ├── ci_validate.py           # 无依赖、非破坏性的CI基线检查 (由 .github/workflows/ci.yml 使用)
-│   └── inspect_controller_evidence.py # 规范化已保存的本地证据 JSON 文件（不打开任何连接）
+│   ├── inspect_controller_evidence.py # 规范化已保存的本地证据 JSON 文件（不打开任何连接）
+│   ├── _doc_policy.py                 # 家族共享的文档规则 (HYDRA-UMC-SDK 的副本,保持同步)
+│   ├── _readme_parity.py              # 检查八个 README 结构一致 (HYDRA-UMC-SDK 的副本,保持同步)
+│   ├── hydra_project_tool.py          # 每个仓库相同的命令: validate、test、ci、version、status、bump
+│   └── extra_build_steps.py           # 除共享构建测试外,本仓库自己的构建步骤 (自带的单元测试)
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # 范围、兼容平台、脚本、硬件验收门控
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # 什么算作真实安全证据,以及此 bridge 拒绝推断的内容

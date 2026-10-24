@@ -122,12 +122,17 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_controllers.py      # Spindle gate, LinuxCNC and CNCjs links against their simulations, MTConnect view
 │   ├── grbl_emulator.py         # Protocol-faithful GRBL v1.1 emulator (realistic test double)
 │   ├── test_grbl_emulator.py    # Bridge behaviour against the GRBL v1.1 emulator
-│   └── test_hardening.py        # Aligned status replies, dead cable, feed hold confirmation, hostile payloads
+│   ├── test_hardening.py        # Aligned status replies, dead cable, feed hold confirmation, hostile payloads
+│   └── test_edge_cases.py       # Payload edge cases, stop-lane routing and the reconnecting serial link
 ├── tools/
 │   ├── build_test.py            # Non-mutating compile + test runner (build-test.bat/.sh)
 │   ├── bump_version.py          # Synchronizes pyproject.toml, manifest and CHANGELOG.md
 │   ├── ci_validate.py           # Dependency-free, non-destructive CI baseline (used by .github/workflows/ci.yml)
-│   └── inspect_controller_evidence.py # Normalizes a saved local evidence JSON file (no link opened)
+│   ├── inspect_controller_evidence.py # Normalizes a saved local evidence JSON file (no link opened)
+│   ├── _doc_policy.py                 # Documentation rules shared by the family (a copy of HYDRA-UMC-SDK's, kept in sync)
+│   ├── _readme_parity.py              # Check that the eight READMEs share one structure (a copy of HYDRA-UMC-SDK's, kept in sync)
+│   ├── hydra_project_tool.py          # The same commands in every repository: validate, test, ci, version, status, bump
+│   └── extra_build_steps.py           # The build steps of this repository beyond the shared build test (its own unit tests)
 ├── docs/
 │   ├── BRIDGE_GUIDE.md                    # Scope, compatible platforms, scripts, hardware acceptance gate
 │   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # What counts as real safety evidence vs. what this bridge refuses to infer
