@@ -31,6 +31,7 @@ Topic scheme (published under HYDRA-UMC-MQTT-BROKER's own
 `docs/BRIDGE_TOPICS.md`):
   hydra/bridges/cnc/state                    <- published, RETAINED (CncSnapshot + derived machine_state + observed_at, epoch milliseconds)
   hydra/bridges/cnc/availability             <- "online" / "offline", RETAINED (the broker publishes "offline" if this bridge dies)
+  hydra/bridges/cnc/mtconnect                <- published, RETAINED, only when switched on (HYDRA_UMC_CNC_MTCONNECT=1): the same state as MTConnect observations (avail, execution, estop, door, spindle_speed, path_feedrate, system)
   hydra/bridges/cnc/cmd/status               -> (empty) refresh + publish state
   hydra/bridges/cnc/cmd/feed_hold            -> (empty) real GRBL feed hold (the result says what the controller reported afterwards)
   hydra/bridges/cnc/cmd/soft_reset           -> (empty) real GRBL soft reset
@@ -47,6 +48,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 from dataclasses import asdict
@@ -57,11 +59,15 @@ from hydra_umc_sdk.job_intake import IdempotencyStore
 from hydra_umc_sdk.bridge_transport import MessageDispatcher as SharedMessageDispatcher
 from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open_bridge_client
 
-from .cell import CncCellBridge, CncSnapshot
-from .serial_transport import GrblRealtimeControl, GrblSerialProbe, SerialLike
+from .cell import CncCellBridge, CncSnapshot, spindle_gate_from_environment
+from .controller import ControllerLink, GrblController
+from .mtconnect_publish import DEFAULT_DEVICE, observations_payload
+from .serial_transport import SerialLike
 
 TOPIC_PREFIX = "hydra/bridges/cnc/"
 AVAILABILITY_TOPIC = f"{TOPIC_PREFIX}availability"
+MTCONNECT_TOPIC = f"{TOPIC_PREFIX}mtconnect"
+MTCONNECT_ENVIRONMENT = "HYDRA_UMC_CNC_MTCONNECT"
 
 # A command is a few hundred bytes; anything larger is not a command, and parsing it is how a hostile payload costs the bridge its memory or its stack.
 MAX_PAYLOAD_BYTES = 16 * 1024
@@ -100,14 +106,28 @@ class CncMqttBridge:
 
     def __init__(
         self,
-        connection: SerialLike,
+        connection: SerialLike | None,
         estop: Callable[[], bool],
         door_closed: Callable[[], bool],
         cell_state: Callable[[], CellState],
         idempotency: IdempotencyStore | None = None,
         *,
         clock: Callable[[], float] = time.time,
+        controller: ControllerLink | None = None,
+        spindle_gate: str | None = None,
+        mtconnect: bool | None = None,
+        mtconnect_device: str = DEFAULT_DEVICE,
     ) -> None:
+        """``connection`` is the GRBL serial port; pass ``controller`` instead (a ``LinuxcncController``, a ``CncjsController``)
+        for a machine that is not a GRBL board on a port of its own. ``spindle_gate`` is the mode of the spindle gate for the
+        phases in which an arm reaches into the machine (see ``CncCellBridge``); when it is not given, it is read from
+        ``HYDRA_UMC_CNC_SPINDLE_GATE`` (default ``when_known``). ``mtconnect`` switches on the retained MTConnect observations
+        topic; when it is not given, it follows ``HYDRA_UMC_CNC_MTCONNECT=1`` (default off)."""
+
+        if controller is None:
+            if connection is None:
+                raise ValueError("a serial connection or a controller link is required")
+            controller = GrblController(connection)
         # docs/BRIDGE_CONTRACT.md: the idempotency key of a job is handled once; a repeat gets the answer that was given, nothing is evaluated again
         self._idempotency = idempotency
         self._connection = connection
@@ -117,9 +137,10 @@ class CncMqttBridge:
         self._clock = clock
         # one status query at a time on the serial port: two readers would take each other's replies
         self._status_lock = threading.Lock()
-        self._probe = GrblSerialProbe()
-        self._realtime = GrblRealtimeControl()
-        self._gate = CncCellBridge()
+        self._controller = controller
+        self._gate = CncCellBridge(spindle_gate if spindle_gate is not None else spindle_gate_from_environment())
+        self._mtconnect = mtconnect if mtconnect is not None else os.environ.get(MTCONNECT_ENVIRONMENT, "").strip() == "1"
+        self._mtconnect_device = mtconnect_device
 
     def refresh_status(self) -> CncSnapshot:
         """Query real GRBL status now.
@@ -148,7 +169,7 @@ class CncMqttBridge:
         """
 
         with self._status_lock:
-            return self._probe.query_status(self._connection, estop=self._estop, door_closed=self._door_closed)
+            return self._controller.read_snapshot(estop=self._estop, door_closed=self._door_closed)
 
     def handle_message(self, topic: str, payload: bytes, *, retained: bool = False) -> list[MqttPublish]:
         """Route one real inbound MQTT message to the real command it names.
@@ -189,16 +210,21 @@ class CncMqttBridge:
 
     def _dispatch(self, suffix: str, payload: bytes) -> list[MqttPublish]:
         if suffix == "cmd/status":
-            return [MqttPublish(f"{TOPIC_PREFIX}state", _snapshot_payload(self.refresh_status(), int(self._clock() * 1000)), retain=True)]
+            snapshot = self.refresh_status()
+            now_ms = int(self._clock() * 1000)
+            publishes = [MqttPublish(f"{TOPIC_PREFIX}state", _snapshot_payload(snapshot, now_ms), retain=True)]
+            if self._mtconnect:
+                publishes.append(MqttPublish(MTCONNECT_TOPIC, json.dumps(observations_payload(snapshot, now_ms, self._mtconnect_device)), retain=True))
+            return publishes
         if suffix == "cmd/feed_hold":
-            result = self._realtime.feed_hold(self._connection)
+            result = self._controller.feed_hold()
             answer = asdict(result)
             if result.executed:
                 # GRBL does not answer "!": ask it what it is doing now, so that "sent" is not read as "stopped"
                 self._confirm(answer)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/feed_hold/result", json.dumps(answer))]
         if suffix == "cmd/soft_reset":
-            result = self._realtime.soft_reset(self._connection)
+            result = self._controller.soft_reset()
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)))]
         if suffix == "cmd/cycle_start_resume":
             # this used to reuse self._last_snapshot - whatever
@@ -213,7 +239,7 @@ class CncMqttBridge:
             # refresh_status() live, immediately before deciding - never
             # a cached read for a command that actually moves the machine.
             snapshot = self.refresh_status()
-            result = self._realtime.cycle_start_resume(self._connection, self._cell_state(), snapshot)
+            result = self._controller.cycle_start_resume(self._cell_state(), snapshot)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/cycle_start_resume/result", json.dumps(asdict(result)))]
         if suffix == "cmd/job":
             return [self._handle_job(payload)]

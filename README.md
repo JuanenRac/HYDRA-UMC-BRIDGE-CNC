@@ -22,7 +22,7 @@ GPL-3.0-or-later - see LICENSE
 
 ---
 
-> **Honesty check - what actually runs today:** the fail-safe cell snapshot and safety gate (`cell.py`'s `CncSnapshot`/`CncCellBridge`, funneling every job through `HYDRA-UMC-SDK`'s own `evaluate_job()`), the read-only GRBL/MTConnect evidence normalizer (`observation.py`), the real GRBL serial transport (`serial_transport.py`'s `GrblSerialProbe`/`GrblRealtimeControl`), and the MQTT command/status transport (`mqtt_transport.py`) are real and covered by 123 passing `unittest` cases (`python tools/build_test.py`), including `tests/test_grbl_emulator.py` running this bridge against a protocol-faithful, hand-written GRBL v1.1 emulator. None of it has touched a real serial port, a real MQTT broker, or an actual CNC controller - `test_serial_transport.py`'s own `FakeSerial` stands in for a physical connection, and `test_mqtt_transport.py` uses a fake broker client the same way. There is no LinuxCNC HAL adapter and no live `run` command yet, because no real controller has been driven - see "Current Status & Next Steps" below, which already says this plainly, and `CHANGELOG.md` for exactly what has shipped so far.
+> **Honesty check - what actually runs today:** the fail-safe cell snapshot and safety gate (`cell.py`'s `CncSnapshot`/`CncCellBridge`, funneling every job through `HYDRA-UMC-SDK`'s own `evaluate_job()`), the read-only GRBL/MTConnect evidence normalizer (`observation.py`), the real GRBL serial transport (`serial_transport.py`'s `GrblSerialProbe`/`GrblRealtimeControl`), and the MQTT command/status transport (`mqtt_transport.py`) are real and covered by 206 passing `unittest` cases (`python tools/build_test.py`), including `tests/test_grbl_emulator.py` running this bridge against a protocol-faithful, hand-written GRBL v1.1 emulator. None of it has touched a real serial port, a real MQTT broker, or an actual CNC controller - `test_serial_transport.py`'s own `FakeSerial` stands in for a physical connection, and `test_mqtt_transport.py` uses a fake broker client the same way. The LinuxCNC and CNCjs links and the MTConnect view have only met simulations, there is no LinuxCNC HAL adapter and there is no live `run` command yet, because no real controller has been driven - see "Current Status & Next Steps" below, which already says this plainly, and `CHANGELOG.md` for exactly what has shipped so far.
 
 ---
 
@@ -34,14 +34,14 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.9` |
 | Maturity | Functional |
-| Tests | 123 (`python tools/build_test.py`) |
+| Tests | 206 (`python tools/build_test.py`) |
 | Stack | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 
 ## 1. 🛠️ TECHNICAL OVERVIEW
 
-**HYDRA-UMC-BRIDGE-CNC** is the high-level bridge between CNC cells and HYDRA-UMC robot auxiliaries: loading, unloading, part handling and supervised auxiliary tasks. It never becomes a real-time trajectory controller — the CNC controller (GRBL today; LinuxCNC is planned) keeps trajectory, spindle and machine-limit authority at all times.
+**HYDRA-UMC-BRIDGE-CNC** is the high-level bridge between CNC cells and HYDRA-UMC robot auxiliaries: loading, unloading, part handling and supervised auxiliary tasks. It never becomes a real-time trajectory controller — the CNC controller (GRBL, LinuxCNC or the one behind CNCjs) keeps trajectory, spindle and machine-limit authority at all times.
 
 It belongs to the **External Automation Bridges** family: a set of sibling repositories (CNC, LASER, OPENPNP, PRINTER3D, ROS2) that all speak the same shared safety contract from `HYDRA-UMC-SDK`, so no bridge can invent its own definition of "safe to work".
 
@@ -52,7 +52,10 @@ It belongs to the **External Automation Bridges** family: a set of sibling repos
 * ✅ **Read-only controller evidence:** `observation.py` strictly normalizes local mapping evidence and supplied GRBL status lines; omitted or non-Boolean E-STOP/door signals fail closed. *(implemented, tested in `tests/test_observation.py`)*
 * ✅ **Real GRBL serial transport:** `serial_transport.py`'s `GrblSerialProbe` opens a real serial connection and queries GRBL's real-time status byte (`?`); `GrblRealtimeControl` sends only GRBL's own real-time control bytes (feed hold, cycle resume, soft reset) — `cycle_start_resume()` is gated on a genuinely `HOLDING` machine, the others are always allowed like `ABORT`. It never streams a G-code program. *(implemented, tested in `tests/test_serial_transport.py`)*
 * ✅ **Non-mutating build/test:** `build-test.bat`/`.sh` compile the source and run the deterministic safety-gate test suite without touching version files or CHANGELOG. *(implemented, see BUILD & RUN below)*
-* 🔜 **LinuxCNC HAL adapter** — deferred; no real CNC controller, HAL pin or robot has been driven yet. *(planned)*
+* ✅ **Controller links:** the bridge talks to a controller through `ControllerLink` (`controller.py`): GRBL on a serial port the bridge holds (`GrblController`), a LinuxCNC installation (`linuxcnc_link.py`: reads `linuxcnc.stat`, sends only pause, abort and resume of a paused program through `linuxcnc.command`, never runs a program) and a CNCjs server that owns the port (`cncjs_link.py`: reads the `controller:state` it broadcasts and sends only `feedhold`, `reset` and `cyclestart`, so the bridge works beside the sender that runs the programs). A resume always needs a READY cell and a machine that is really holding; an old or missing reading is never an idle machine. Both links are tested against simulations (`SimulatedLinuxcnc`, `SimulatedCncjs`); neither has touched a real LinuxCNC or CNCjs. *(implemented, simulated only)*
+* ✅ **Spindle gate:** a load or an unload is refused when the controller is idle but still reports a turning spindle or a moving feed (`FS:`). `HYDRA_UMC_CNC_SPINDLE_GATE` is `off`, `when_known` (default: refuses what is reported) or `required` (also refuses what the controller does not report). The snapshot also carries the positions, the work offset and the overrides of the report. *(implemented)*
+* ✅ **MTConnect view:** `mtconnect_publish.py` turns the snapshot into MTConnect observations (`avail`, `execution`, `estop`, `door`, `spindle_speed`, `path_feedrate`, `system`), served as SHDR over TCP by `ShdrAdapter` (read only; the only line it honours is `* PING`) and, with `HYDRA_UMC_CNC_MTCONNECT=1`, published retained on `hydra/bridges/cnc/mtconnect`. A controller that does not report is `UNAVAILABLE`, never `READY`. Tested against a simulated agent. *(implemented, not yet tried against a real agent)*
+* 🔜 **LinuxCNC HAL pins** — deferred; no real CNC controller, HAL pin or robot has been driven yet. *(planned)*
 * ✅ **Repeated idempotency keys:** `CncMqttBridge` accepts an `IdempotencyStore`: a repeated job key gets the answer given the first time instead of being evaluated again. *(implemented, tested in `tests/test_idempotency.py`)*
 * ✅ **Status replies that line up, fail-closed serial, hardened MQTT loop:** the status query throws away what is already waiting, sends `?` and reads until a real status report (`<...>`) arrives - the banner, `ok`, `[MSG:...]` and `ALARM:n` lines GRBL sends unasked no longer leave every later query one reply behind; a missing USB device (or any failure on the link) fails closed instead of ending the bridge, and the port is opened without asserting DTR; `cmd/feed_hold` reports what the controller said afterwards (`controller_state_after`, `confirmed`), and `cmd/feed_hold` and `cmd/soft_reset` run on a lane of their own, so a status query never delays them; an oversized (over 16 KiB), unreadable or deeply nested payload and any unexpected failure are answered with a refusal on the result topic and never end the loop; `cmd/job` answers say `"mode": "gate-only"` and an ABORT through it says that nothing was stopped; the state carries `observed_at` and the bridge announces itself on an `availability` topic with a Last Will. GRBL has ONE serial port: while this bridge holds it, no G-code sender can use it (see `docs/BRIDGE_GUIDE.md`). *(implemented, tested in `tests/test_hardening.py`)*
 
@@ -74,7 +77,7 @@ flowchart LR
 * **Why E-STOP and door state are checked before the controller's own reported state.** `CncSnapshot.machine_state()` short-circuits to `SAFE_STOP` on `estop` or a not-closed door first — a controller that still reports `IDLE` while its door is open must never be trusted at face value.
 * **Why the controller-state mapping is deliberately conservative.** Only the literal string `IDLE` maps to `MachineState.IDLE`. Every unrecognized value falls back to `OFFLINE`, never to something that would permit auxiliary work — an unknown controller state is treated as "don't know", not "probably fine".
 * **Why the bridge builds a new `BridgeJob` and delegates to the shared `evaluate_job()` instead of writing its own accept/reject logic.** All five External Automation Bridges (CNC, LASER, OPENPNP, PRINTER3D, ROS2) reuse the exact same `bridge_contract` from `HYDRA-UMC-SDK`, so "what counts as safe to start a job" cannot silently diverge between them.
-* **Why the LinuxCNC HAL adapter is not in this repo yet.** Wiring real HAL pins is a hardware/software integration step that has to be validated against an actual controller; claiming it here before that validation would be a claim this local core cannot back up.
+* **Why the LinuxCNC and CNCjs links only read, pause and resume.** The controller keeps trajectory, spindle and limit authority, and the program belongs to whoever runs it (CNCjs, LinuxCNC itself): the bridge may bring the machine to rest and let a paused one go on, nothing more. Wiring real HAL pins stays a hardware integration step that has to be validated against an actual controller.
 * **How this fits the rest of the ecosystem.** BRIDGE-CNC sits between the CNC controller and `HYDRA-UMC-SDK` → `HYDRA-UMC-MQTT-BROKER` → MCU/cell safety — it coordinates auxiliary robot work around the CNC, it does not replace or override the controller's own safety authority.
 
 The observation helpers are evidence normalizers, not controller adapters: they do not open HAL, serial or network links. [Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) defines the validation required before a real controller integration.
@@ -90,7 +93,11 @@ HYDRA-UMC-BRIDGE-CNC/
 │       ├── __init__.py
 │       ├── cell.py              # CncSnapshot + CncCellBridge safety gate
 │       ├── observation.py       # Read-only mapping and GRBL status normalization
-│       ├── serial_transport.py  # Real, fail-closed GRBL serial transport - status queries + real-time control bytes only
+│       ├── serial_transport.py  # Real, fail-closed GRBL serial transport - status queries + real-time control bytes only (the port and the status query are the shared SDK serial link)
+│       ├── controller.py        # ControllerLink: the four things the bridge needs of any controller (+ GrblController)
+│       ├── linuxcnc_link.py     # LinuxCNC: reads linuxcnc.stat, pauses, aborts, resumes (+ SimulatedLinuxcnc)
+│       ├── cncjs_link.py        # CNCjs: reads its broadcast, feedhold/reset/cyclestart (+ SimulatedCncjs)
+│       ├── mtconnect_publish.py # MTConnect observations, SHDR lines and the read-only SHDR adapter
 │       └── mqtt_transport.py    # Real MQTT broker transport for this bridge's own already-real logic
 ├── tests/
 │   ├── test_cell.py             # Safe-idle admission, open-door rejection, abort forwarding
@@ -99,6 +106,7 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── test_mqtt_transport.py   # MQTT command/status shape tests against a fake broker client
 │   ├── test_mqtt_environment.py # The MQTT credentials and TLS of the service environment reach the client
 │   ├── test_idempotency.py      # A repeated idempotency key is answered once
+│   ├── test_controllers.py      # Spindle gate, LinuxCNC and CNCjs links against their simulations, MTConnect view
 │   ├── grbl_emulator.py         # Protocol-faithful GRBL v1.1 emulator (realistic test double)
 │   ├── test_grbl_emulator.py    # Bridge behaviour against the GRBL v1.1 emulator
 │   └── test_hardening.py        # Aligned status replies, dead cable, feed hold confirmation, hostile payloads
@@ -138,15 +146,15 @@ bash build-test.sh
 bash build.sh
 ```
 
-`build-test` compiles every module under `src/` with `py_compile` and runs the full `unittest` suite discovered under `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 123 tests), proving safe-idle admission, open-door rejection and abort forwarding among everything else covered — it never modifies the repository. `build` runs that same validation first and, only on success, calls `tools/bump_version.py` to synchronize the version across `pyproject.toml`, `hydra-umc.project.json` and `CHANGELOG.md`. There is no live CNC `run` command yet — that requires a validated controller integration.
+`build-test` compiles every module under `src/` with `py_compile` and runs the full `unittest` suite discovered under `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 206 tests), proving safe-idle admission, open-door rejection and abort forwarding among everything else covered — it never modifies the repository. `build` runs that same validation first and, only on success, calls `tools/bump_version.py` to synchronize the version across `pyproject.toml`, `hydra-umc.project.json` and `CHANGELOG.md`. There is no live CNC `run` command yet — that requires a validated controller integration.
 
 ---
 
 ## ✅ Current Status & Next Steps
 
-**Real today:** version `0.1.9`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, strict read-only controller-evidence normalization covering GRBL v1.1's full real status vocabulary including real `Hold:N`/`Door:N` substates (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`) plus MTConnect execution states, a real serial transport (`GrblSerialProbe`/`GrblRealtimeControl`) that can query status and send GRBL's own real-time control bytes over an actual connection - the live door/E-STOP read now happens right after that query's own blocking round trip, never before it, and a real short/zero-byte write is reported as not executed rather than a false success - a 123-test deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
+**Real today:** version `0.1.9`, a locally tested fail-safe cell coordinator (`CncSnapshot` + `CncCellBridge`) backed by `HYDRA-UMC-SDK`'s shared job gate, strict read-only controller-evidence normalization covering GRBL v1.1's full real status vocabulary including real `Hold:N`/`Door:N` substates (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`) plus MTConnect execution states, a real serial transport (`GrblSerialProbe`/`GrblRealtimeControl`) that can query status and send GRBL's own real-time control bytes over an actual connection - the live door/E-STOP read now happens right after that query's own blocking round trip, never before it, and a real short/zero-byte write is reported as not executed rather than a false success - a 206-test deterministic `unittest` suite, and non-mutating build-test scripts wired into CI with an SDK checkout.
 
-**Integration boundary:** the CNC controller (GRBL today; LinuxCNC is planned) retains trajectory, spindle and machine-limit authority at all times; this bridge only ever gates *auxiliary* robot work, never controller motion.
+**Integration boundary:** the CNC controller (GRBL, LinuxCNC or the one behind CNCjs) retains trajectory, spindle and machine-limit authority at all times; this bridge only ever gates *auxiliary* robot work, never controller motion.
 
 **Still ahead:** no real CNC controller, LinuxCNC HAL pin or robot has been driven — choosing and validating a concrete HAL adapter is a hardware/software integration step that comes after the machine and its documented interface are available.
 
