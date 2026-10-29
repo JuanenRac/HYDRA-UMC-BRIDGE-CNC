@@ -34,6 +34,10 @@ For the phases in which an arm reaches into the machine (`LOAD`, `UNLOAD`) an id
 
 `mtconnect_publish.py` states what the CNC is doing in the words of MTConnect: `avail`, `execution` (`READY`, `ACTIVE`, `FEED_HOLD`, `STOPPED`, `INTERRUPTED`), `estop`, `door`, the samples `spindle_speed` and `path_feedrate`, and a `system` condition (a `FAULT` with the native code `ESTOP`, `DOOR_OPEN` or the controller state). A controller that is not reporting is `UNAVAILABLE`, never `READY`, and a value the controller did not report is `UNAVAILABLE`, never zero. `ShdrAdapter` serves the observations as SHDR lines over TCP (127.0.0.1 unless told otherwise, at most 16 clients, read only: the only line it honours is `* PING`), which is what an off-the-shelf MTConnect agent reads. With `HYDRA_UMC_CNC_MTCONNECT=1` the bridge also publishes the same observations, retained, on `hydra/bridges/cnc/mtconnect` after each status refresh.
 
+## Matching answers to requests
+
+A command whose payload is a JSON object may carry a `request_id` (a plain token of up to 64 characters: letters, digits, `.`, `_`, `:`, `-`). Every result the bridge publishes for that message, on `cmd/<verb>/result`, carries the same `request_id`, so a caller with several commands in flight can tell the answers apart. A repeated idempotency key still gets the answer that was stored for it, with the `request_id` of the new request. The state topics do not carry one.
+
 ## One serial port
 
 A GRBL controller has ONE serial port. While this bridge holds it open, no other sender (UGS, bCNC, CNCjs, LaserGRBL) can use it, and this bridge does not send programs. That means the machine can run a job only if something that shares the port - a multiplexer such as CNCjs or ser2net - sits between the bridge, the sender and the controller, or if the programs are started some other way while the bridge only observes. With the CNCjs link above, CNCjs keeps the port and the bridge observes and pauses beside it; without it, the bridge is not deployable as it stands on a machine that is also driven by a G-code sender.

@@ -143,14 +143,14 @@
         {
           "name": "tests/",
           "desc": {
-            "en": "206 tests, with a hand-written GRBL emulator",
-            "es": "206 pruebas, con un emulador GRBL escrito a mano",
-            "de": "206 Tests, mit einem handgeschriebenen GRBL-Emulator",
-            "fr": "206 tests, avec un émulateur GRBL écrit à la main",
-            "it": "206 test, con un emulatore GRBL scritto a mano",
-            "ja": "206 件（手書きの GRBL エミュレーター付き）",
-            "zh": "206 项测试（含手写 GRBL 模拟器）",
-            "pt": "206 testes, com um emulador GRBL escrito à mão"
+            "en": "208 tests, with a hand-written GRBL emulator",
+            "es": "208 pruebas, con un emulador GRBL escrito a mano",
+            "de": "208 Tests, mit einem handgeschriebenen GRBL-Emulator",
+            "fr": "208 tests, avec un émulateur GRBL écrit à la main",
+            "it": "208 test, con un emulatore GRBL scritto a mano",
+            "ja": "208 件（手書きの GRBL エミュレーター付き）",
+            "zh": "208 项测试（含手写 GRBL 模拟器）",
+            "pt": "208 testes, com um emulador GRBL escrito à mão"
           }
         },
         {

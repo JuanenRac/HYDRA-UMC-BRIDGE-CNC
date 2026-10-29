@@ -49,6 +49,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 from dataclasses import asdict
@@ -84,6 +85,38 @@ def _snapshot_payload(snapshot: CncSnapshot, observed_at_ms: int) -> str:
     # when this reading was taken: a retained state without it cannot be told from one that is hours old
     payload["observed_at"] = observed_at_ms
     return json.dumps(payload)
+
+
+_REQUEST_ID = re.compile(r"[A-Za-z0-9._:-]{1,64}")
+
+
+def request_id_of(payload: bytes) -> str | None:
+    """The `request_id` a caller put in a JSON-object payload, when it is a short plain token; None otherwise (no payload, not JSON, not an object, no id, or an id that is not a plain token)."""
+    if not payload or not payload.lstrip().startswith(b"{"):
+        return None
+    try:
+        value = json.loads(payload).get("request_id")
+    except (ValueError, AttributeError):
+        return None
+    return value if isinstance(value, str) and _REQUEST_ID.fullmatch(value) else None
+
+
+def with_request_id(publishes: list[MqttPublish], request_id: str | None) -> list[MqttPublish]:
+    """Adds `request_id` to every result the bridge publishes for a command, so that a caller with several commands in flight can tell which answer is which. The state topics are left alone."""
+    if request_id is None:
+        return publishes
+    out: list[MqttPublish] = []
+    for publish in publishes:
+        if publish.topic.endswith("/result"):
+            try:
+                body = json.loads(publish.payload)
+            except ValueError:
+                body = None
+            if isinstance(body, dict):
+                body["request_id"] = request_id
+                publish = MqttPublish(publish.topic, json.dumps(body), publish.retain)
+        out.append(publish)
+    return out
 
 
 def _refusal(suffix: str, reason: str) -> list[MqttPublish]:
@@ -172,6 +205,13 @@ class CncMqttBridge:
             return self._controller.read_snapshot(estop=self._estop, door_closed=self._door_closed)
 
     def handle_message(self, topic: str, payload: bytes, *, retained: bool = False) -> list[MqttPublish]:
+        """Route one inbound message and put the `request_id` the caller sent (a plain token in a JSON payload) into each result, so answers can be matched to requests."""
+
+        if retained or len(payload) > MAX_PAYLOAD_BYTES:
+            return self._route(topic, payload, retained=retained)
+        return with_request_id(self._route(topic, payload, retained=retained), request_id_of(payload))
+
+    def _route(self, topic: str, payload: bytes, *, retained: bool = False) -> list[MqttPublish]:
         """Route one real inbound MQTT message to the real command it names.
 
         An unrecognised topic (this bridge subscribes to `cmd/#`, a
