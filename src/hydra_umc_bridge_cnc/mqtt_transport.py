@@ -55,8 +55,8 @@ import time
 from dataclasses import asdict
 from typing import Callable
 
-from hydra_umc_sdk.bridge_contract import BridgeError, CellState, JobPhase, MachineState, decision_to_dict, job_from_dict
-from hydra_umc_sdk.job_intake import IdempotencyStore
+from hydra_umc_sdk.bridge_contract import CellState, JobPhase, MachineState, decision_to_dict
+from hydra_umc_sdk.job_intake import IdempotencyStore, JobIntake
 from hydra_umc_sdk.bridge_transport import MessageDispatcher as SharedMessageDispatcher
 from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open_bridge_client
 
@@ -163,6 +163,8 @@ class CncMqttBridge:
             controller = GrblController(connection)
         # docs/BRIDGE_CONTRACT.md: the idempotency key of a job is handled once; a repeat gets the answer that was given, nothing is evaluated again
         self._idempotency = idempotency
+        # what arrives as a job goes through the shared intake: a malformed one is refused and a repeated key is answered from the store
+        self._intake = JobIntake(idempotency)
         self._connection = connection
         self._estop = estop
         self._door_closed = door_closed
@@ -304,14 +306,20 @@ class CncMqttBridge:
         # to - never a raised exception that would kill the whole message
         # loop and silently stop this bridge from answering anything else.
         try:
-            job = job_from_dict(json.loads(payload))
-        except (json.JSONDecodeError, BridgeError, UnicodeDecodeError) as error:
+            raw = json.loads(payload)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
             decision = {"allowed": False, "reason": f"malformed job payload: {error}"}
             return MqttPublish(result_topic, json.dumps(decision))
-        key = f"job:{job.idempotency_key}"
-        repeat = self._repeat(key, result_topic, {"allowed": False, "reason": "this idempotency_key was already handled"})
-        if repeat is not None:
-            return repeat
+        intake = self._intake.accept(raw if isinstance(raw, dict) else {})
+        if intake.job is None:
+            reason = intake.reason.removeprefix("malformed job: ")
+            return MqttPublish(result_topic, json.dumps({"allowed": False, "reason": f"malformed job payload: {reason}"}))
+        job = intake.job
+        key = job.idempotency_key
+        if intake.duplicate:
+            stored = self._idempotency.recall(key) if self._idempotency is not None else None
+            fallback = {"allowed": False, "reason": "this idempotency_key was already handled"}
+            return MqttPublish(result_topic, stored if stored is not None else json.dumps(fallback))
         try:
             # -
             # same real gap as cycle_start_resume above: gating a new job
@@ -331,13 +339,6 @@ class CncMqttBridge:
             _LOG.exception("cmd/job failed")
             failure = {"allowed": False, "reason": f"the job could not be handled: {type(error).__name__}"}
             return self._answer(key, MqttPublish(result_topic, json.dumps(failure)))
-
-    def _repeat(self, key: str, result_topic: str, fallback: dict) -> MqttPublish | None:
-        """None when this job key is new (it is claimed now); otherwise the answer given the first time, which is sent again instead of running the job a second time."""
-        if self._idempotency is None or self._idempotency.claim(key):
-            return None
-        stored = self._idempotency.recall(key)
-        return MqttPublish(result_topic, stored if stored is not None else json.dumps(fallback))
 
     def _answer(self, key: str, publish: MqttPublish) -> MqttPublish:
         if self._idempotency is not None:

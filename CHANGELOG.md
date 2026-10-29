@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Jobs go through the shared intake of the SDK:** the check of a malformed job and of a repeated `idempotency_key` is the SDK's `JobIntake` instead of code of this bridge (the keys are no longer prefixed with `job:`).
+
 - **A caller can match each answer to its request:** a command payload that is a JSON object may carry a `request_id` (a plain token of up to 64 characters: letters, digits, `.`, `_`, `:`, `-`); every result the bridge publishes for that message carries it back, also the one stored for a repeated idempotency key. The state topics are not changed. 6 tests.
 - **The real serial port is tested over a pseudo-terminal:** a new test opens the port with pyserial against the GRBL emulator behind an `os.openpty()` pair and covers the status query, a real-time feed hold and the reopening of a port that went away; it runs where POSIX and pyserial are available (the CI installs pyserial) and is skipped elsewhere.
 
