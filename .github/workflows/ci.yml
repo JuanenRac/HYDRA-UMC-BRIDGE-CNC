@@ -17,6 +17,8 @@ jobs:
         with: {python-version: '3.12'}
       - name: Validate manifest, version, documentation, links and secret policy
         run: python tools/ci_validate.py
+      - name: Install pyserial for the pseudo-terminal serial tests
+        run: python -m pip install "pyserial>=3.5"
       - name: Run non-mutating bridge verification
         env:
           HYDRA_UMC_SDK_ROOT: "${{ github.workspace }}/.hydra-umc-sdk-contract"
