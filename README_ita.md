@@ -1,11 +1,11 @@
 <!-- =============================================================================
-HYDRA-UMC-BRIDGE-CNC - Ponte di coordinamento cella CNC
+HYDRA-UMC-BRIDGE-CNC - CNC cell coordination bridge
 Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 GPL-3.0-or-later - see LICENSE
 ============================================================================= -->
 
 <p align="center">
-  <img src="images/HYDRA_UMC_BANNER.svg" alt="Banner HYDRA-UMC-BRIDGE-CNC" width="100%">
+  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-BRIDGE-CNC banner" width="100%">
 </p>
 
 # 🔧 HYDRA-UMC-BRIDGE-CNC
@@ -15,18 +15,21 @@ GPL-3.0-or-later - see LICENSE
 ### 🛑 Ponte di coordinamento fail-safe per celle CNC
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licenza-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/Safety-Fails%20Closed-red.svg" alt="Fail-safe">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg" alt="Python">
+  <img src="https://img.shields.io/badge/Safety-Fails%20Closed-red.svg" alt="Safety">
+  <img src="https://img.shields.io/badge/Tests-206%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.2.0-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-> **Verifica di onestà - cosa funziona davvero oggi:** lo snapshot di cella fail-safe e il gate di sicurezza (`cell.py` con `CncSnapshot`/`CncCellBridge`, che fa passare ogni lavoro attraverso il vero `evaluate_job()` di `HYDRA-UMC-SDK`), il normalizzatore di evidenze GRBL/MTConnect di sola lettura (`observation.py`), il vero trasporto seriale GRBL (`serial_transport.py` con `GrblSerialProbe`/`GrblRealtimeControl`), e il trasporto comandi/stato MQTT (`mqtt_transport.py`) sono reali e coperti da 206 casi `unittest` superati (`python tools/build_test.py`), incluso `tests/test_grbl_emulator.py`, che esegue questo bridge contro un emulatore GRBL v1.1 fedele al protocollo ma scritto a mano. Nulla di tutto ciò ha toccato una porta seriale reale, un vero broker MQTT, o un vero controller CNC - il `FakeSerial` proprio di `test_serial_transport.py` sostituisce una connessione fisica, e `test_mqtt_transport.py` usa allo stesso modo un client broker fittizio. I collegamenti LinuxCNC e CNCjs e la vista MTConnect hanno incontrato solo simulazioni, non esiste un adattatore HAL LinuxCNC né un comando `run` dal vivo, perché nessun controller reale è stato pilotato - vedi "Stato attuale e prossimi passi" qui sotto, che lo dice già chiaramente, e `CHANGELOG.md` per cosa è stato esattamente consegnato finora.
-
----
+> **Verifica di onestà - cosa funziona davvero oggi:** lo snapshot di cella fail-safe e il gate di sicurezza (`cell.py` con `CncSnapshot`/`CncCellBridge`, che fa passare ogni lavoro attraverso il vero `evaluate_job()` di `HYDRA-UMC-SDK`), il normalizzatore di evidenze GRBL/MTConnect di sola lettura (`observation.py`), il vero trasporto seriale GRBL (`serial_transport.py` con `GrblSerialProbe`/`GrblRealtimeControl`), e il trasporto comandi/stato MQTT (`mqtt_transport.py`) sono reali e coperti da 206 casi `unittest` superati (`python tools/build_test.py`), incluso `tests/test_grbl_emulator.py`, che esegue questo bridge contro un emulatore GRBL v1.1 fedele al protocollo ma scritto a mano. Nulla di tutto ciò ha toccato una porta seriale reale, un vero broker MQTT, o un vero controller CNC - il `FakeSerial` proprio di `test_serial_transport.py` sostituisce una connessione fisica, e `test_mqtt_transport.py` usa allo stesso modo un client broker fittizio. I collegamenti LinuxCNC e CNCjs e la vista MTConnect hanno incontrato solo simulazioni, non esiste un adattatore HAL LinuxCNC né un comando `run` dal vivo, perché nessun controller reale è stato pilotato - vedi "Roadmap e limiti noti" qui sotto, che lo dice già chiaramente, e `CHANGELOG.md` per cosa è stato esattamente consegnato finora.
 
 > **Stato di sicurezza (safety e security):** questo ecosistema non è un sistema di sicurezza certificato. Non esiste ancora un percorso E-STOP hardware, né limiti o interblocchi imposti dal firmware, né un comando di movimento verificato; le immagini firmware sono controllate con CRC32 e un HMAC-SHA256 a chiave condivisa, non con una firma asimmetrica; TLS e TLS reciproco sono opzionali e disattivati per impostazione predefinita; nessuna scheda propria è stata ancora assemblata o provata. Leggi la [base di sicurezza](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) e il [modello delle minacce](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) prima di fidarti di qualsiasi affermazione qui per la sicurezza di una persona.
+
+---
 
 ## 📋 In breve
 
@@ -34,10 +37,12 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versione | `0.2.0` |
 | Maturità | Funzionale |
-| Test | 123 (`python tools/build_test.py`) |
+| Test | 206 (`python tools/build_test.py`) |
 | Tecnologia | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
 | Destinazione | Il Raspberry Pi CM5 di una cella HYDRA-UMC |
 | Su hardware reale | Solo simulato: provato con emulatori, test double o simulatori; per questa versione non risulta alcuna esecuzione su hardware reale |
+
+**Vai a:** [Panoramica](#-panoramica) · [Architettura](#-architettura) · [Funzionalità](#-funzionalità) · [Sicurezza e protezione](#-sicurezza-e-protezione) · [Interfacce](#-interfacce) · [Configurazione](#-configurazione) · [Avvio rapido](#-avvio-rapido) · [Test](#-test) · [Risoluzione dei problemi](#-risoluzione-dei-problemi) · [Struttura del repository](#-struttura-del-repository) · [Progetti correlati](#-progetti-correlati)
 
 ## 🚦 Stato del progetto
 
@@ -48,33 +53,38 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟡 | Funziona per il suo scopo principale; la verifica di onestà qui sopra elenca ciò che manca ancora |
-| Test | 🟢 | 123 test automatici, eseguiti a ogni modifica |
+| Test | 🟢 | 206 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🟠 | Solo simulato: provato con emulatori, test double o simulatori; per questa versione non risulta alcuna esecuzione su hardware reale |
 | Documentazione | 🟢 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
-## 1. 🛠️ PANORAMICA TECNICA
+## 🎯 Panoramica
 
 **HYDRA-UMC-BRIDGE-CNC** è il ponte di alto livello tra celle CNC e ausiliari robotici HYDRA-UMC: carico, scarico, movimentazione pezzi e attività ausiliarie supervisionate. Non diventa mai un controllore di traiettoria in tempo reale — il controllore CNC (GRBL, LinuxCNC o quello dietro CNCjs) mantiene sempre l'autorità su traiettoria, mandrino e limiti macchina.
 
 Appartiene alla famiglia **External Automation Bridges**: un insieme di repository fratelli (CNC, LASER, OPENPNP, PRINTER3D, ROS2) che condividono lo stesso contratto di sicurezza di `HYDRA-UMC-SDK`, così nessun ponte può inventare una propria definizione di "sicuro per lavorare".
 
-### Caratteristiche principali:
-* ✅ **Snapshot di cella fail-safe, reale:** `cell.py` — `CncSnapshot.machine_state()` controlla l'E-STOP e lo stato della porta *prima* di guardare ciò che riporta il controllore; un E-STOP attivo o una porta aperta risolvono sempre in `SAFE_STOP`, indipendentemente da ciò che dice `controller_state`. *(implementato, testato in `tests/test_cell.py`)*
-* ✅ **Porta di sicurezza condivisa, reale:** ogni lavoro osservato viene rivalutato tramite `evaluate_job()` del `bridge_contract` di `HYDRA-UMC-SDK`, la stessa porta usata da tutti i ponti fratelli. *(implementato)*
-* ✅ **Mappatura di stato conservativa:** solo `IDLE` è trattato come riposo; `RUN`/`RUNNING`/`JOG`/`HOME` vengono mappati su `RUNNING`, `FAULT`/`ERROR`/`OFF`/`ALARM` su `FAULT`, e qualsiasi valore non riconosciuto ricade su `OFFLINE` — mai su uno stato che permetterebbe lavoro produttivo. (`HOLD` → `HOLDING`; `DOOR` → `SAFE_STOP`) *(implementato)*
-* ✅ **Evidenza del controller in sola lettura:** `observation.py` normalizza rigorosamente l'evidenza di mappatura locale e le righe di stato GRBL fornite; i segnali E-STOP/porta omessi o non booleani falliscono in modo sicuro. *(implementato, testato in `tests/test_observation.py`)*
-* ✅ **Trasporto seriale GRBL reale:** `GrblSerialProbe` di `serial_transport.py` apre una vera connessione seriale e interroga il byte di stato in tempo reale di GRBL (`?`); `GrblRealtimeControl` invia solo i byte di controllo in tempo reale propri di GRBL (mantenimento avanzamento, ripresa ciclo, reset morbido) — `cycle_start_resume()` è subordinato a una macchina realmente in `HOLDING`, gli altri sono sempre consentiti come `ABORT`. Non trasmette mai un programma G-code. *(implementato, testato in `tests/test_serial_transport.py`)*
-* ✅ **Build/test non mutante:** `build-test.bat`/`.sh` compilano il codice sorgente ed eseguono la suite di test della porta di sicurezza senza toccare i file di versione o il CHANGELOG. *(implementato, vedi COMPILAZIONE ED ESECUZIONE più sotto)*
-* ✅ **Collegamenti al controllore:** il bridge parla con un controllore tramite `ControllerLink` (`controller.py`): GRBL su una porta seriale che il bridge tiene aperta (`GrblController`), un'installazione LinuxCNC (`linuxcnc_link.py`: legge `linuxcnc.stat`, invia solo pausa, interruzione e ripresa di un programma in pausa tramite `linuxcnc.command`, non esegue mai un programma) e un server CNCjs che possiede la porta (`cncjs_link.py`: legge il `controller:state` che trasmette e invia solo `feedhold`, `reset` e `cyclestart`, così il bridge lavora accanto al mittente che esegue i programmi). Una ripresa richiede sempre una cella READY e una macchina davvero in attesa; una lettura vecchia o assente non è mai una macchina a riposo. Entrambi i collegamenti sono testati contro simulazioni (`SimulatedLinuxcnc`, `SimulatedCncjs`); nessuno ha toccato un vero LinuxCNC o CNCjs. *(implementato, solo simulato)*
-* ✅ **Gate del mandrino:** un carico o uno scarico viene rifiutato quando il controllore è a riposo ma segnala ancora un mandrino in rotazione o un avanzamento in movimento (`FS:`). `HYDRA_UMC_CNC_SPINDLE_GATE` vale `off`, `when_known` (predefinito: rifiuta ciò che viene segnalato) o `required` (rifiuta anche ciò che il controllore non segnala). Lo snapshot porta anche le posizioni, l'offset di lavoro e gli override del rapporto. *(implementato)*
-* ✅ **Vista MTConnect:** `mtconnect_publish.py` trasforma lo snapshot in osservazioni MTConnect (`avail`, `execution`, `estop`, `door`, `spindle_speed`, `path_feedrate`, `system`), servite come SHDR su TCP da `ShdrAdapter` (sola lettura; l'unica riga accettata è `* PING`) e, con `HYDRA_UMC_CNC_MTCONNECT=1`, pubblicate come retained su `hydra/bridges/cnc/mtconnect`. Un controllore che non risponde è `UNAVAILABLE`, mai `READY`. Testato contro un agente simulato. *(implementato, non ancora provato con un agente reale)*
-* 🔜 **Pin HAL di LinuxCNC** — rimandato; nessun controllore CNC reale, pin HAL o robot è stato ancora azionato. *(pianificato)*
-* ✅ **Chiavi di idempotenza ripetute:** `CncMqttBridge` accetta un `IdempotencyStore`: una chiave di lavoro ripetuta riceve la risposta data la prima volta invece di essere valutata di nuovo. *(implementato, testato in `tests/test_idempotency.py`)*
-* ✅ **Risposte di stato allineate, seriale fail-safe, ciclo MQTT blindato:** la richiesta di stato scarta ciò che già attende, invia `?` e legge finché non arriva un vero rapporto di stato (`<...>`): il banner, `ok`, `[MSG:...]` e `ALARM:n` che GRBL invia senza che li si chieda non lasciano più ogni richiesta successiva indietro di una risposta; un dispositivo USB assente (o qualsiasi guasto del collegamento) fallisce in modo sicuro invece di terminare il bridge, e la porta viene aperta senza attivare DTR; `cmd/feed_hold` riporta ciò che il controller ha detto dopo (`controller_state_after`, `confirmed`), e `cmd/feed_hold` e `cmd/soft_reset` girano su una corsia propria, così una richiesta di stato non li ritarda mai; un payload troppo grande (oltre 16 KiB), illeggibile o con JSON profondamente annidato, e qualsiasi guasto inatteso, ricevono un rifiuto sul topic di risultato e non terminano mai il ciclo; le risposte di `cmd/job` riportano `"mode": "gate-only"` e un ABORT passato di lì dice che nulla è stato fermato; lo stato porta `observed_at` e il bridge si annuncia su un topic `availability` con Last Will. GRBL ha UNA sola porta seriale: finché questo bridge la tiene aperta, nessun emettitore di G-code può usarla (vedi `docs/BRIDGE_GUIDE.md`). *(implementato, testato in `tests/test_hardening.py`)*
+## 🧩 Ruolo in HYDRA-UMC
 
----
+**HYDRA-UMC-BRIDGE-CNC** sta tra un controller CNC (GRBL, LinuxCNC o quello dietro CNCjs) e la cella di robot che lo carica e scarica. Il controller mantiene sempre l'autorità su traiettoria, mandrino e limiti; il bridge riferisce solo ciò che dice il controller e interroga la porta condivisa prima di qualsiasi lavoro ausiliario.
 
-## 2. 🔄 FLUSSO DI COORDINAMENTO DELLA CELLA
+Ogni bridge parla il contratto di sicurezza condiviso di `HYDRA-UMC-SDK`: un lavoro viene accettato solo se la porta condivisa `evaluate_job()` lo permette, e quella porta fallisce chiusa. Il progetto padre è `HYDRA-UMC-SERVER`; questo bridge non lo chiama, risponde via MQTT, attraverso `HYDRA-UMC-MQTT-BROKER`, a chi comanda la cella.
+
+| Parla con | Come | A che scopo |
+|---|---|---|
+| `HYDRA-UMC-SDK` | import Python | la porta dei lavori `evaluate_job()`, la forma di lavori e decisioni, il collegamento seriale e il client MQTT |
+| `HYDRA-UMC-MQTT-BROKER` | MQTT, `hydra/bridges/cnc/` | comandi in ingresso (`cmd/`), stato e risultati in uscita |
+| GRBL | porta seriale | richiesta di stato `?` e byte in tempo reale (sospensione avanzamento, ripresa ciclo, reset software); mai un programma G-code |
+| LinuxCNC | modulo Python `linuxcnc` | legge `linuxcnc.stat`; invia solo pausa, interruzione e ripresa |
+| CNCjs | socket.io | ascolta `controller:state`; invia solo `feedhold`, `reset`, `cyclestart` |
+
+## 🏛️ Architettura
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-BRIDGE-CNC architecture" width="100%">
+</p>
+
+<details>
+<summary>Versione testuale del diagramma (Mermaid)</summary>
 
 ```mermaid
 flowchart LR
@@ -83,9 +93,9 @@ flowchart LR
     SDK -- GateDecision --> RESULT["MQTT: cmd/job/result"]
 ```
 
----
+</details>
 
-## 3. 🧱 ARCHITETTURA E DECISIONI DI PROGETTAZIONE
+**Perché è fatto così**
 
 * **Perché l'E-STOP e lo stato della porta vengono controllati prima dello stato riportato dal controllore stesso.** `CncSnapshot.machine_state()` va direttamente in cortocircuito su `SAFE_STOP` in caso di `estop` o porta non chiusa, prima di ogni altra cosa — un controllore che continua a riportare `IDLE` con la porta aperta non deve mai essere preso alla lettera.
 * **Perché la mappatura dello stato del controllore è deliberatamente conservativa.** Solo la stringa letterale `IDLE` viene mappata su `MachineState.IDLE`. Qualsiasi valore non riconosciuto ricade su `OFFLINE`, mai su qualcosa che permetterebbe lavoro ausiliario — uno stato del controllore sconosciuto viene trattato come "non lo so", non come "probabilmente va bene".
@@ -95,62 +105,105 @@ flowchart LR
 
 Gli helper di osservazione sono normalizzatori di evidenza, non adattatori del controllore: non aprono collegamenti HAL, seriali o di rete. [Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) definisce la validazione richiesta prima di una reale integrazione del controllore.
 
----
+## ✨ Funzionalità
 
-## 📂 STRUTTURA DELLE DIRECTORY
+* ✅ **Snapshot di cella fail-safe, reale:** `cell.py` — `CncSnapshot.machine_state()` controlla l'E-STOP e lo stato della porta *prima* di guardare ciò che riporta il controllore; un E-STOP attivo o una porta aperta risolvono sempre in `SAFE_STOP`, indipendentemente da ciò che dice `controller_state`. *(implementato, testato in `tests/test_cell.py`)*
+* ✅ **Porta di sicurezza condivisa, reale:** ogni lavoro osservato viene rivalutato tramite `evaluate_job()` del `bridge_contract` di `HYDRA-UMC-SDK`, la stessa porta usata da tutti i ponti fratelli. *(implementato)*
+* ✅ **Mappatura di stato conservativa:** solo `IDLE` è trattato come riposo; `RUN`/`RUNNING`/`JOG`/`HOME` vengono mappati su `RUNNING`, `FAULT`/`ERROR`/`OFF`/`ALARM` su `FAULT`, e qualsiasi valore non riconosciuto ricade su `OFFLINE` — mai su uno stato che permetterebbe lavoro produttivo. (`HOLD` → `HOLDING`; `DOOR` → `SAFE_STOP`) *(implementato)*
+* ✅ **Evidenza del controller in sola lettura:** `observation.py` normalizza rigorosamente l'evidenza di mappatura locale e le righe di stato GRBL fornite; i segnali E-STOP/porta omessi o non booleani falliscono in modo sicuro. *(implementato, testato in `tests/test_observation.py`)*
+* ✅ **Trasporto seriale GRBL reale:** `GrblSerialProbe` di `serial_transport.py` apre una vera connessione seriale e interroga il byte di stato in tempo reale di GRBL (`?`); `GrblRealtimeControl` invia solo i byte di controllo in tempo reale propri di GRBL (mantenimento avanzamento, ripresa ciclo, reset morbido) — `cycle_start_resume()` è subordinato a una macchina realmente in `HOLDING`, gli altri sono sempre consentiti come `ABORT`. Non trasmette mai un programma G-code. *(implementato, testato in `tests/test_serial_transport.py`)*
+* ✅ **Build/test non mutante:** `build-test.bat`/`.sh` compilano il codice sorgente ed eseguono la suite di test della porta di sicurezza senza toccare i file di versione o il CHANGELOG. *(implementato, vedi Compilazione e rilascio più sotto)*
+* ✅ **Collegamenti al controllore:** il bridge parla con un controllore tramite `ControllerLink` (`controller.py`): GRBL su una porta seriale che il bridge tiene aperta (`GrblController`), un'installazione LinuxCNC (`linuxcnc_link.py`: legge `linuxcnc.stat`, invia solo pausa, interruzione e ripresa di un programma in pausa tramite `linuxcnc.command`, non esegue mai un programma) e un server CNCjs che possiede la porta (`cncjs_link.py`: legge il `controller:state` che trasmette e invia solo `feedhold`, `reset` e `cyclestart`, così il bridge lavora accanto al mittente che esegue i programmi). Una ripresa richiede sempre una cella READY e una macchina davvero in attesa; una lettura vecchia o assente non è mai una macchina a riposo. Entrambi i collegamenti sono testati contro simulazioni (`SimulatedLinuxcnc`, `SimulatedCncjs`); nessuno ha toccato un vero LinuxCNC o CNCjs. *(implementato, solo simulato)*
+* ✅ **Gate del mandrino:** un carico o uno scarico viene rifiutato quando il controllore è a riposo ma segnala ancora un mandrino in rotazione o un avanzamento in movimento (`FS:`). `HYDRA_UMC_CNC_SPINDLE_GATE` vale `off`, `when_known` (predefinito: rifiuta ciò che viene segnalato) o `required` (rifiuta anche ciò che il controllore non segnala). Lo snapshot porta anche le posizioni, l'offset di lavoro e gli override del rapporto. *(implementato)*
+* ✅ **Vista MTConnect:** `mtconnect_publish.py` trasforma lo snapshot in osservazioni MTConnect (`avail`, `execution`, `estop`, `door`, `spindle_speed`, `path_feedrate`, `system`), servite come SHDR su TCP da `ShdrAdapter` (sola lettura; l'unica riga accettata è `* PING`) e, con `HYDRA_UMC_CNC_MTCONNECT=1`, pubblicate come retained su `hydra/bridges/cnc/mtconnect`. Un controllore che non risponde è `UNAVAILABLE`, mai `READY`. Testato contro un agente simulato. *(implementato, non ancora provato con un agente reale)*
+* 🔜 **Pin HAL di LinuxCNC** — rimandato; nessun controllore CNC reale, pin HAL o robot è stato ancora azionato. *(pianificato)*
+* ✅ **Chiavi di idempotenza ripetute:** `CncMqttBridge` accetta un `IdempotencyStore`: una chiave di lavoro ripetuta riceve la risposta data la prima volta invece di essere valutata di nuovo. *(implementato, testato in `tests/test_idempotency.py`)*
+* ✅ **Risposte di stato allineate, seriale fail-safe, ciclo MQTT blindato:** la richiesta di stato scarta ciò che già attende, invia `?` e legge finché non arriva un vero rapporto di stato (`<...>`): il banner, `ok`, `[MSG:...]` e `ALARM:n` che GRBL invia senza che li si chieda non lasciano più ogni richiesta successiva indietro di una risposta; un dispositivo USB assente (o qualsiasi guasto del collegamento) fallisce in modo sicuro invece di terminare il bridge, e la porta viene aperta senza attivare DTR; `cmd/feed_hold` riporta ciò che il controller ha detto dopo (`controller_state_after`, `confirmed`), e `cmd/feed_hold` e `cmd/soft_reset` girano su una corsia propria, così una richiesta di stato non li ritarda mai; un payload troppo grande (oltre 16 KiB), illeggibile o con JSON profondamente annidato, e qualsiasi guasto inatteso, ricevono un rifiuto sul topic di risultato e non terminano mai il ciclo; le risposte di `cmd/job` riportano `"mode": "gate-only"` e un ABORT passato di lì dice che nulla è stato fermato; lo stato porta `observed_at` e il bridge si annuncia su un topic `availability` con Last Will. GRBL ha UNA sola porta seriale: finché questo bridge la tiene aperta, nessun emettitore di G-code può usarla (vedi `docs/BRIDGE_GUIDE.md`). *(implementato, testato in `tests/test_hardening.py`)*
 
-```text
-HYDRA-UMC-BRIDGE-CNC/
-├── src/
-│   └── hydra_umc_bridge_cnc/
-│       ├── __init__.py
-│       ├── cell.py              # Porta di sicurezza CncSnapshot + CncCellBridge
-│       ├── observation.py       # Mapping di sola lettura e normalizzazione dello stato GRBL
-│       ├── serial_transport.py  # Trasporto seriale GRBL reale e fail-closed - solo interrogazioni di stato e byte di controllo in tempo reale (la porta e l'interrogazione di stato sono il collegamento seriale condiviso dell'SDK)
-│       ├── controller.py        # ControllerLink: ciò che il bridge richiede a qualsiasi controllore (+ GrblController)
-│       ├── linuxcnc_link.py     # LinuxCNC: legge linuxcnc.stat, pausa, interrompe, riprende (+ SimulatedLinuxcnc)
-│       ├── cncjs_link.py        # CNCjs: legge la sua trasmissione, feedhold/reset/cyclestart (+ SimulatedCncjs)
-│       ├── mtconnect_publish.py # Osservazioni MTConnect, righe SHDR e l'adattatore SHDR in sola lettura
-│       └── mqtt_transport.py    # Trasporto MQTT reale del broker per la logica già reale di questo bridge
-├── tests/
-│   ├── test_cell.py             # Ammissione in riposo sicuro, rifiuto porta aperta, inoltro abort
-│   ├── test_observation.py      # L'evidenza di sicurezza mancante fallisce fail-closed
-│   ├── test_serial_transport.py # Trasporto seriale reale contro una porta fittizia, incl. percorsi fail-closed
-│   ├── test_mqtt_transport.py   # Test di forma comando/stato MQTT contro un client broker fittizio
-│   ├── test_mqtt_environment.py # Le credenziali MQTT e il TLS dell'ambiente del servizio arrivano al client
-│   ├── test_idempotency.py      # Una chiave di idempotenza ripetuta riceve risposta una sola volta
-│   ├── test_controllers.py      # Gate del mandrino, collegamenti LinuxCNC e CNCjs contro le simulazioni, vista MTConnect
-│   ├── grbl_emulator.py         # Emulatore GRBL v1.1 fedele al protocollo (test double realistico)
-│   ├── test_grbl_emulator.py    # Comportamento del bridge rispetto all'emulatore GRBL v1.1
-│   ├── test_hardening.py        # Risposte di stato allineate, cavo scollegato, conferma del blocco avanzamento, payload ostili
-│   └── test_edge_cases.py       # Casi limite del payload, instradamento della corsia di arresto e collegamento seriale che si riconnette
-├── tools/
-│   ├── build_test.py            # Compilatore + esecutore di test non mutante (build-test.bat/.sh)
-│   ├── bump_version.py          # Sincronizza pyproject.toml, manifesto e CHANGELOG.md
-│   ├── ci_validate.py           # Base CI priva di dipendenze e non distruttiva (usata da .github/workflows/ci.yml)
-│   ├── inspect_controller_evidence.py # Normalizza un file JSON di evidenza locale salvato (nessun collegamento aperto)
-│   ├── _doc_policy.py                 # Regole di documentazione condivise dalla famiglia (copia di quella di HYDRA-UMC-SDK, mantenuta sincronizzata)
-│   ├── _readme_parity.py              # Verifica che gli otto README abbiano la stessa struttura (copia di quella di HYDRA-UMC-SDK, mantenuta sincronizzata)
-│   ├── hydra_project_tool.py          # Gli stessi comandi in ogni repository: validate, test, ci, version, status, bump
-│   └── extra_build_steps.py           # I passi di compilazione propri di questo repository oltre al test di compilazione condiviso (i suoi unit test)
-├── docs/
-│   ├── BRIDGE_GUIDE.md                    # Ambito, piattaforme compatibili, script, porta di accettazione hardware
-│   └── CONTROLLER_EVIDENCE_BOUNDARY.md    # Cosa conta come evidenza di sicurezza reale e cosa questo bridge rifiuta di dedurre
-├── images/
-│   └── HYDRA_UMC_BANNER.svg     # Banner del README
-├── build-test.bat / build-test.sh  # Solo valida, non modifica mai il repository
-├── build.bat / build.sh            # Valida e, solo in caso di successo, aggiorna versione + CHANGELOG
-├── pyproject.toml               # Metadati del pacchetto; dipende da HYDRA-UMC-SDK (git)
-├── hydra-umc.project.json       # Manifesto dell'ecosistema (versione, maturità, famiglia)
-├── CHANGELOG.md
-├── CODE_OF_CONDUCT.md / CONTRIBUTING.md / SECURITY.md / SUPPORT.md
-├── LICENSE / LICENSE.md
-└── README.md / README_*.md      # Questo file e le sue 6 traduzioni
+## 🔒 Sicurezza e protezione
+
+| Minaccia | Difesa | Dove |
+|---|---|---|
+| Un lavoro per una cella che non è in stato sicuro | Ogni lavoro passa dalla porta condivisa `evaluate_job()`, che fallisce chiusa; il bridge non ha una logica propria di accettazione. L'arresto di emergenza e la porta si leggono prima di ciò che riferisce il controller, e porta aperta o arresto di emergenza è sempre `SAFE_STOP` | `cell.py`, SDK `bridge_contract` |
+| Dati di lavoro smisurati | Al massimo 32 parametri, chiavi fino a 64 caratteri, valori fino a 1024, identificatori fino a 128; un payload MQTT oltre 16 KiB viene rifiutato sul topic di risultato | SDK `bridge_contract`, `mqtt_transport.py` |
+| Un ordine ripetuto o rinviato | Un `IdempotencyStore` ricorda ogni chiave per 24 ore e al massimo 10 000 voci; una ripetizione riceve la prima risposta invece di essere valutata di nuovo. Un messaggio `cmd/` trattenuto viene ignorato alla riconnessione | SDK `job_intake.py`, `mqtt_transport.py` |
+| Un mandrino in rotazione mentre un braccio carica o scarica | `LOAD` e `UNLOAD` vengono rifiutati se il controller è a riposo ma riferisce un mandrino in rotazione o un avanzamento in movimento; `HYDRA_UMC_CNC_SPINDLE_GATE` è `off`, `when_known` (predefinito, anche per un valore sconosciuto) o `required` | `cell.py` |
+| Fermare o muovere la macchina con un ordine remoto | A CNCjs arrivano solo `feedhold`, `reset` e `cyclestart`, a LinuxCNC solo pausa, interruzione e ripresa, a una porta seriale solo i byte in tempo reale GRBL; una ripresa richiede una cella READY e una macchina davvero ferma. `cmd/feed_hold` e `cmd/soft_reset` girano su una corsia propria | `cncjs_link.py`, `linuxcnc_link.py`, `serial_transport.py`, `mqtt_transport.py` |
+| Una lettura vecchia scambiata per una macchina a riposo | Una lettura CNCjs più vecchia di 3 secondi non è considerata, uno stato mancante o vecchio non è mai a riposo e la porta conta come aperta; un comando LinuxCNC scade dopo 2 secondi; una richiesta seriale fallita fallisce chiusa | `cncjs_link.py`, `linuxcnc_link.py`, `serial_transport.py` |
+| Un client MTConnect che inonda l'adattatore | L'adattatore SHDR è di sola lettura: al massimo 16 client, righe fino a 1024 byte, e l'unica riga accettata è `* PING` | `mtconnect_publish.py` |
+
+**Cosa non fa mai:** non invia mai in streaming un programma G-code, non esegue mai un programma in LinuxCNC, non toglie mai a CNCjs la sua porta seriale e non deduce mai uno stato di arresto di emergenza o di porta che la prova non portava. Vedi `docs/CONTROLLER_EVIDENCE_BOUNDARY.md`.
+
+## 🔌 Interfacce
+
+Topic sotto `hydra/bridges/cnc/` (prefisso `TOPIC_PREFIX`); il bridge si iscrive a `cmd/#`.
+
+| Topic o rotta | Cosa porta |
+|---|---|
+| `cmd/status` | chiede lo stato della cella; risposta su `cmd/status/result` |
+| `cmd/job` | un `BridgeJob` nella forma `job_to_dict()` dell'SDK; la risposta è una `GateDecision` marcata `"mode": "gate-only"` (non agisce mai, un `ABORT` da qui dice che nulla è stato fermato) |
+| `cmd/feed_hold`, `cmd/soft_reset` | i comandi di arresto, su una corsia propria; la risposta contiene `controller_state_after` e `confirmed` |
+| `cmd/cycle_start_resume`, `cmd/start`, `cmd/resume` | riprendono una macchina ferma; rifiutato se la cella non è READY e la macchina non è davvero ferma (mai dopo un evento di porta) |
+| `<verb>/result` | una risposta JSON per comando, `{"allowed", "executed", "reason"}` per un rifiuto |
+| `state`, `availability` | lo stato della cella (trattenuto, con `observed_at` in millisecondi epoch) e `online`/`offline` (il Last Will) |
+| `mtconnect` | osservazioni MTConnect, trattenute; solo con `HYDRA_UMC_CNC_MTCONNECT=1` |
+
+La libreria: `CncCellBridge`, `CncSnapshot`, `CncMqttBridge`, `spindle_gate_from_environment()` e i tre collegamenti (`GrblController`, `LinuxcncController`, `CncjsController`).
+
+## ⚙️ Configurazione
+
+| Variabile | Predefinito | Cosa imposta |
+|---|---|---|
+| `HYDRA_UMC_CNC_SPINDLE_GATE` | `when_known` | `off`, `when_known` o `required`; non impostato o sconosciuto equivale a `when_known` |
+| `HYDRA_UMC_CNC_MTCONNECT` | disattivato | `1` pubblica le osservazioni MTConnect su `hydra/bridges/cnc/mtconnect` |
+| `HYDRA_MQTT_USERNAME` | nessuno | Il nome utente MQTT; il broker lo lega a un prefisso di ID client |
+| `HYDRA_MQTT_PASSWORD` | nessuno | La password; valida solo insieme al nome utente |
+| `HYDRA_MQTT_PASSWORD_FILE` | nessuno | La password letta da un file (segreto Docker o systemd); ignorata se `HYDRA_MQTT_PASSWORD` è impostata |
+| `HYDRA_MQTT_TLS_CA` | nessuno | Il file della CA che ha firmato il certificato del broker: la connessione è TLS e il certificato viene verificato |
+| `HYDRA_MQTT_TLS` | disattivato | `1` attiva TLS, verificato con le CA fidate del sistema |
+| `HYDRA_MQTT_TLS_CERT` / `HYDRA_MQTT_TLS_KEY` | nessuno | Il certificato client e la sua chiave per un broker che richiede TLS reciproco; servono entrambi |
+
+Il collegamento al controller si sceglie nel codice: passa `controller=` a `CncMqttBridge` per LinuxCNC o CNCjs, altrimenti il bridge tiene una connessione seriale GRBL. Finché la tiene, nessun sender G-code può usare quella porta (vedi `docs/BRIDGE_GUIDE.md`, «One serial port»).
+
+## 🚀 Avvio rapido
+
+Richiede Python 3.11 o successivo. I test e gli script di build si aspettano `HYDRA-UMC-SDK` clonato accanto a questo repository (`../HYDRA-UMC-SDK`) o indicato con `HYDRA_UMC_SDK_ROOT`.
+
+Provalo senza hardware (questo verifica tutto il bridge con i suoi emulatori e test double):
+
+```bash
+py -3 tools/build_test.py          # Windows
+python3 tools/build_test.py         # Linux, macOS
+build-test.bat  /  bash build-test.sh   # the same, through the scripts
 ```
 
----
+Avviare il servizio (non c'è uno script da console: il servizio è il `run_forever()` del trasporto MQTT, che chiami dal tuo codice di avvio):
 
-## 4. ⚙️ COMPILAZIONE ED ESECUZIONE
+```python
+from hydra_umc_bridge_cnc.mqtt_transport import CncMqttBridge, run_forever
+# `connection` is an open GRBL serial connection (open_serial_port()), or pass controller=...
+bridge = CncMqttBridge(connection)
+run_forever(bridge, host="192.168.0.180")   # connects to the broker and serves cmd/# forever
+```
+
+Nome utente, password e file TLS vengono dalle variabili `HYDRA_MQTT_*` (vedi Configurazione); il codice sopra non ha bisogno di credenziali proprie.
+
+## 🧪 Test
+
+206 casi `unittest` automatici si eseguono con `python tools/build_test.py` (che compila anche ogni modulo). I test non richiedono hardware, rete né pacchetti opzionali: quelli che richiederebbero `paho-mqtt`, `pyserial` o una libreria del produttore usano un sostituto o vengono saltati se il pacchetto manca.
+
+| File di test | Test | Cosa copre |
+|---|---|---|
+| `test_cell.py` | 10 | ammissione a riposo sicuro, rifiuto con porta aperta, inoltro dell'interruzione |
+| `test_controllers.py` | 63 | porta del mandrino, collegamenti LinuxCNC e CNCjs contro le loro simulazioni, vista MTConnect |
+| `test_serial_transport.py` | 29 | il trasporto seriale contro una porta finta, compresi i percorsi che falliscono chiusi |
+| `test_mqtt_transport.py`, `test_mqtt_environment.py` | 28 + 4 | forme di comandi e stato contro un client di broker finto; credenziali e TLS dell'ambiente arrivano al client |
+| `test_grbl_emulator.py`, `grbl_emulator.py` | 17 | il bridge contro un emulatore GRBL v1.1 scritto a mano e fedele al protocollo |
+| `test_hardening.py`, `test_edge_cases.py`, `test_idempotency.py`, `test_observation.py` | 25 + 20 + 3 + 7 | risposte di stato allineate, un cavo morto, conferma della sospensione, payload ostili, chiavi ripetute, prove mancanti |
+
+La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini, ed esegue i test con una copia dell'SDK.
+
+## 🏗️ Compilazione e rilascio
 
 Richiede Python 3.11+. `tools/build_test.py` si aspetta che `HYDRA-UMC-SDK` sia clonato come directory fratella (`../HYDRA-UMC-SDK`) o indicato tramite la variabile d'ambiente `HYDRA_UMC_SDK_ROOT`.
 
@@ -166,9 +219,56 @@ bash build.sh
 
 `build-test` compila ogni modulo sotto `src/` con `py_compile` ed esegue l'intera suite `unittest` individuata sotto `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 206 test), dimostrando l'ammissione in riposo sicuro, il rifiuto porta aperta e l'inoltro dell'abort tra tutto il resto coperto — non modifica mai il repository. `build` esegue prima quella stessa validazione e, solo in caso di successo, chiama `tools/bump_version.py` per sincronizzare la versione in `pyproject.toml`, `hydra-umc.project.json` e `CHANGELOG.md`. Non esiste ancora un comando `run` CNC reale — serve un'integrazione del controllore validata.
 
----
+## 🩺 Risoluzione dei problemi
 
-## ✅ STATO ATTUALE E PROSSIMI PASSI
+| Vedi | Perché | Fai |
+|---|---|---|
+| `ModuleNotFoundError: hydra_umc_sdk` | L'SDK non è installato né accanto a questo repository | Clona `HYDRA-UMC-SDK` accanto a questo repository o imposta `HYDRA_UMC_SDK_ROOT` |
+| `paho-mqtt is not installed` | Il client MQTT è un extra opzionale | `pip install ".[mqtt]"` (serve `paho-mqtt` 2.1 o successivo, inferiore a 3) |
+| `password was given without a username` | Le credenziali MQTT richiedono entrambe le parti | Imposta anche `HYDRA_MQTT_USERNAME`, non solo la password |
+| `spindle_gate must be one of ...` | `HYDRA_UMC_CNC_SPINDLE_GATE` ha un valore che il codice non conosce | Usa `off`, `when_known` o `required` (passato nel codice solleva un'eccezione; dall'ambiente un valore sconosciuto torna a `when_known`) |
+| `a serial connection or a controller link is required` | `CncMqttBridge` è stato creato senza nessuna delle due | Passa una connessione seriale aperta o `controller=` |
+| `"allowed": false` + `reason` | La porta condivisa o una guardia ha rifiutato l'ordine | Leggi `reason`: porta aperta, arresto di emergenza, macchina non a riposo, mandrino in rotazione o lettura vecchia; correggi la causa, non riprovare alla cieca |
+
+## 📂 Struttura del repository
+
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-BRIDGE-CNC" width="100%">
+</p>
+
+<details>
+<summary>Versione testuale dell'albero</summary>
+
+```text
+HYDRA-UMC-BRIDGE-CNC/
+├── src/hydra_umc_bridge_cnc/
+│   ├── cell.py                    istantanea della cella, porta di sicurezza, porta del mandrino
+│   ├── observation.py             prove di sola lettura, righe di stato GRBL
+│   ├── serial_transport.py        collegamento seriale GRBL: richiesta di stato e byte in tempo reale
+│   ├── controller.py              ControllerLink e il controller GRBL
+│   ├── linuxcnc_link.py           collegamento LinuxCNC (legge, mette in pausa, riprende) e la sua simulazione
+│   ├── cncjs_link.py              collegamento CNCjs (feedhold, reset, cyclestart) e la sua simulazione
+│   ├── mtconnect_publish.py       osservazioni MTConnect e l'adattatore SHDR di sola lettura
+│   └── mqtt_transport.py          trasporto MQTT di comandi e stato
+├── tests/                         206 test, con un emulatore GRBL scritto a mano
+├── docs/                          guida del bridge, limite delle prove
+├── tools/                         esecutore di build e test, aumento di versione, validatore CI, generatori e controlli di README e immagini
+├── images/                        banner e immagini del README
+├── .github/                       workflow CI e modelli di segnalazione
+├── pyproject.toml                 metadati del pacchetto e dipendenze
+├── hydra-umc.project.json         manifesto: versione, maturità, famiglia
+├── CHANGELOG.md                   cosa è cambiato in ogni versione
+├── build.sh build.bat             script di build (non cambiano mai la versione)
+├── build-test.sh build-test.bat   script di build (non cambiano mai la versione)
+├── test.sh test.bat               eseguono i test
+└── SECURITY.md SUPPORT.md CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE LICENSE.md
+```
+
+</details>
+
+## 🗺️ Roadmap e limiti noti
+
+**Limiti noti oggi**
 
 **Reale oggi:** versione `0.2.0`, un coordinatore di cella fail-safe testato in locale (`CncSnapshot` + `CncCellBridge`) appoggiato sulla porta di lavoro condivisa di `HYDRA-UMC-SDK`, normalizzazione rigorosa e in sola lettura dell'evidenza del controllore che copre l'intero vocabolario di stato reale di GRBL v1.1 inclusi i veri sottostati `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`) oltre agli stati di esecuzione MTConnect, un trasporto seriale reale (`GrblSerialProbe`/`GrblRealtimeControl`) capace di interrogare lo stato e inviare i byte di controllo in tempo reale propri di GRBL su una connessione reale - la lettura live di porta/E-STOP avviene ora subito dopo il round trip bloccante di quella stessa interrogazione, mai prima, e una scrittura reale corta o di zero byte viene segnalata come non eseguita anziché come un falso successo -, una suite `unittest` deterministica di 206 test, e script build-test non mutanti collegati alla CI con checkout dell'SDK.
 
@@ -176,9 +276,11 @@ bash build.sh
 
 **Ancora da fare:** nessun controllore CNC reale, pin HAL LinuxCNC o robot è stato azionato — scegliere e validare un adattatore HAL concreto è un passo di integrazione hardware/software successivo alla disponibilità della macchina e della sua interfaccia documentata.
 
----
+## 🌍 Lingue
 
-## 🔗 Progetti Correlati
+Questo README e i documenti del repository esistono in otto lingue: inglese, spagnolo, tedesco, francese, italiano, giapponese, cinese e portoghese (Portogallo). Sono scritti insieme e la CI verifica che gli otto file abbiano le stesse sezioni e gli stessi link. Questo repository non ha uno schermo né un catalogo di messaggi propri, quindi non ci sono stringhe di interfaccia da tradurre.
+
+## 🔗 Progetti correlati
 
 Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore (JuanenRac / Electro Hobby 3D). Vale la pena conoscerlo, poiché una richiesta potrebbe in realtà riguardare uno di questi invece di questo repository.
 
@@ -271,20 +373,28 @@ Questo progetto fa parte dell'ecosistema robotico HYDRA-UMC dello stesso autore 
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinatore di incidenti di manutenzione: un ruolo edge a basso privilegio raccoglie uno snapshot di inventario/salute sanificato, un ruolo control-plane lo rende in sola lettura e chiede a un provider di IA di suggerire una diagnosi - non applica mai una patch né distribuisce nulla.
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host di sviluppo riproducibile (Raspberry Pi 5 / CM5) che conserva il codice sorgente dell'ecosistema ed esegue attività delimitate di build/test tramite una coda durevole; un ruolo di sviluppo dedicato, esplicitamente distinto da un CM5 operativo.
 
----
+## 📚 Documentazione
 
-## 📚 Documentazione e Comunità
+Dove leggere di più:
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnologico e linee guida di codifica per una pull request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — gli standard di comportamento attesi in questa comunità.
-- **[SECURITY.md](SECURITY.md)** — come segnalare una vulnerabilità, e le reali aree di attenzione sulla sicurezza di questo progetto.
-- **[SUPPORT.md](SUPPORT.md)** — dove porre domande e segnalare bug.
-- **[LICENSE.md](LICENSE.md)** — la licenza propria di questo progetto.
+* [docs/BRIDGE_GUIDE.md](docs/BRIDGE_GUIDE.md) - ambito, collegamenti ai controller, porta del mandrino, vista MTConnect, l'unica porta seriale, script
+* [docs/CONTROLLER_EVIDENCE_BOUNDARY.md](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) - cosa conta come prova di sicurezza reale e cosa il bridge rifiuta di dedurre
+* [Base di sicurezza dell'ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Modello delle minacce dell'ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Registro delle modifiche di questo repository](CHANGELOG.md)
+* [Licenza di questo repository](LICENSE.md)
+
+## 🤝 Contribuire e comunità
+
+* Prima di una pull request esegui `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (oppure `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`): deve stampare `CI_VALIDATION=PASS`. Non eseguire `build.sh` né `build.bat` per questa verifica; compilare non è verificare.
+* I otto README sono scritti da un'unica fonte in HYDRA-UMC-DOCS; non modificarli a mano. Cambia la fonte e riscrivili con `tools/make_readmes.py`.
+* Non affermare in un README ciò che non è stato eseguito: scrivi «simulato» o «non provato su hardware» quando è la verità.
+* Vedi [CONTRIBUTING.md](CONTRIBUTING.md), il [codice di condotta](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) e [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTORE
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LICENZA
-GPL-3.0-or-later - Vedi LICENSE per i dettagli.
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

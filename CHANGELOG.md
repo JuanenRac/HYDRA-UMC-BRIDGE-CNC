@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree. Where the repository has a service or an MQTT transport, the README now says how to start it and which environment variables it reads.
+
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
 
 ## [0.2.0] - Controller links and spindle gate
@@ -19,9 +21,6 @@ All notable changes to this project are documented here.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/hydra_project_tool.py`: the same `validate`, `test`, `version`, `status` and `bump` commands in every repository. The checks run with `HYDRA_UMC_CI=1` and fail if the version changes; only `bump` changes it.
 - The SDK is now fetched at a release tag instead of the main branch, so a change of the SDK cannot break this repository by itself.
-
-## [0.2.0]
-
 - Successful incremental build: synchronized package metadata and `hydra-umc.project.json`.
 
 ## [0.1.9]
@@ -30,6 +29,7 @@ All notable changes to this project are documented here.
 - The licence is written as GPL-3.0-or-later in every header and in the package metadata.
 
 ## [0.1.8] - Maturity lowered to functional
+
 - Maturity is functional: the code, tests and documentation are in place, but nothing here has been verified on real hardware yet, so the manifest no longer claims the established level.
 
 ## [0.1.7] - The status reply that is read is the one that was asked for, and a missing cable fails closed

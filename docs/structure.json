@@ -1,0 +1,335 @@
+{
+  "repo": "HYDRA-UMC-BRIDGE-CNC",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "cards": [
+    {
+      "name": "src/hydra_umc_bridge_cnc/",
+      "span": 3,
+      "accent": "a",
+      "sub": {
+        "en": "the bridge, in Python",
+        "es": "el bridge, en Python",
+        "de": "der Bridge in Python",
+        "fr": "le bridge, en Python",
+        "it": "il bridge, in Python",
+        "ja": "Python のブリッジ",
+        "zh": "用 Python 编写的桥接",
+        "pt": "o bridge, em Python"
+      },
+      "rows": [
+        {
+          "name": "cell.py",
+          "desc": {
+            "en": "cell snapshot, safety gate, spindle gate",
+            "es": "instantánea de la celda, puerta de seguridad, puerta del husillo",
+            "de": "Zellen-Schnappschuss, Sicherheitstor, Spindeltor",
+            "fr": "instantané de la cellule, porte de sécurité, porte de broche",
+            "it": "istantanea della cella, porta di sicurezza, porta del mandrino",
+            "ja": "セル状態、安全ゲート、スピンドルゲート",
+            "zh": "单元快照、安全门、主轴门",
+            "pt": "instantâneo da célula, porta de segurança, porta do fuso"
+          }
+        },
+        {
+          "name": "observation.py",
+          "desc": {
+            "en": "read-only evidence, GRBL status lines",
+            "es": "evidencia de solo lectura, líneas de estado GRBL",
+            "de": "Nur-Lese-Nachweise, GRBL-Statuszeilen",
+            "fr": "preuves en lecture seule, lignes d'état GRBL",
+            "it": "prove di sola lettura, righe di stato GRBL",
+            "ja": "読み取り専用の証拠、GRBL ステータス行",
+            "zh": "只读证据、GRBL 状态行",
+            "pt": "evidência só de leitura, linhas de estado GRBL"
+          }
+        },
+        {
+          "name": "serial_transport.py",
+          "desc": {
+            "en": "GRBL serial link: status query and real-time bytes",
+            "es": "enlace serie GRBL: consulta de estado y bytes en tiempo real",
+            "de": "GRBL-Seriell: Statusabfrage und Echtzeit-Bytes",
+            "fr": "liaison série GRBL : requête d'état et octets temps réel",
+            "it": "collegamento seriale GRBL: richiesta di stato e byte in tempo reale",
+            "ja": "GRBL シリアル接続：状態照会とリアルタイムバイト",
+            "zh": "GRBL 串口链路：状态查询与实时字节",
+            "pt": "ligação série GRBL: consulta de estado e bytes em tempo real"
+          }
+        },
+        {
+          "name": "controller.py",
+          "desc": {
+            "en": "ControllerLink and the GRBL controller",
+            "es": "ControllerLink y el controlador GRBL",
+            "de": "ControllerLink und der GRBL-Controller",
+            "fr": "ControllerLink et le contrôleur GRBL",
+            "it": "ControllerLink e il controller GRBL",
+            "ja": "ControllerLink と GRBL コントローラー",
+            "zh": "ControllerLink 与 GRBL 控制器",
+            "pt": "ControllerLink e o controlador GRBL"
+          }
+        },
+        {
+          "name": "linuxcnc_link.py",
+          "desc": {
+            "en": "LinuxCNC link (reads, pauses, resumes) and its simulation",
+            "es": "enlace LinuxCNC (lee, pausa, reanuda) y su simulación",
+            "de": "LinuxCNC-Anbindung (liest, pausiert, setzt fort) und ihre Simulation",
+            "fr": "liaison LinuxCNC (lit, met en pause, reprend) et sa simulation",
+            "it": "collegamento LinuxCNC (legge, mette in pausa, riprende) e la sua simulazione",
+            "ja": "LinuxCNC 連携（読み取り・一時停止・再開）とそのシミュレーション",
+            "zh": "LinuxCNC 链路（读取、暂停、恢复）及其模拟",
+            "pt": "ligação LinuxCNC (lê, pausa, retoma) e a sua simulação"
+          }
+        },
+        {
+          "name": "cncjs_link.py",
+          "desc": {
+            "en": "CNCjs link (feedhold, reset, cyclestart) and its simulation",
+            "es": "enlace CNCjs (feedhold, reset, cyclestart) y su simulación",
+            "de": "CNCjs-Anbindung (feedhold, reset, cyclestart) und ihre Simulation",
+            "fr": "liaison CNCjs (feedhold, reset, cyclestart) et sa simulation",
+            "it": "collegamento CNCjs (feedhold, reset, cyclestart) e la sua simulazione",
+            "ja": "CNCjs 連携（feedhold・reset・cyclestart）とそのシミュレーション",
+            "zh": "CNCjs 链路（feedhold、reset、cyclestart）及其模拟",
+            "pt": "ligação CNCjs (feedhold, reset, cyclestart) e a sua simulação"
+          }
+        },
+        {
+          "name": "mtconnect_publish.py",
+          "desc": {
+            "en": "MTConnect observations and the read-only SHDR adapter",
+            "es": "observaciones MTConnect y el adaptador SHDR de solo lectura",
+            "de": "MTConnect-Beobachtungen und der schreibgeschützte SHDR-Adapter",
+            "fr": "observations MTConnect et l'adaptateur SHDR en lecture seule",
+            "it": "osservazioni MTConnect e l'adattatore SHDR di sola lettura",
+            "ja": "MTConnect の観測値と読み取り専用 SHDR アダプター",
+            "zh": "MTConnect 观测值与只读 SHDR 适配器",
+            "pt": "observações MTConnect e o adaptador SHDR só de leitura"
+          }
+        },
+        {
+          "name": "mqtt_transport.py",
+          "desc": {
+            "en": "MQTT command and status transport",
+            "es": "transporte MQTT de órdenes y estado",
+            "de": "MQTT-Transport für Befehle und Status",
+            "fr": "transport MQTT des commandes et de l'état",
+            "it": "trasporto MQTT di comandi e stato",
+            "ja": "MQTT のコマンド・状態トランスポート",
+            "zh": "MQTT 命令与状态传输",
+            "pt": "transporte MQTT de comandos e estado"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "tests, docs and tools",
+        "es": "pruebas, docs y herramientas",
+        "de": "Tests, Doku und Werkzeuge",
+        "fr": "tests, docs et outils",
+        "it": "test, documenti e strumenti",
+        "ja": "テスト・文書・ツール",
+        "zh": "测试、文档和工具",
+        "pt": "testes, docs e ferramentas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "tests/",
+          "desc": {
+            "en": "206 tests, with a hand-written GRBL emulator",
+            "es": "206 pruebas, con un emulador GRBL escrito a mano",
+            "de": "206 Tests, mit einem handgeschriebenen GRBL-Emulator",
+            "fr": "206 tests, avec un émulateur GRBL écrit à la main",
+            "it": "206 test, con un emulatore GRBL scritto a mano",
+            "ja": "206 件（手書きの GRBL エミュレーター付き）",
+            "zh": "206 项测试（含手写 GRBL 模拟器）",
+            "pt": "206 testes, com um emulador GRBL escrito à mão"
+          }
+        },
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "bridge guide, evidence boundary",
+            "es": "guía del bridge, límite de la evidencia",
+            "de": "Bridge-Leitfaden, Grenze der Nachweise",
+            "fr": "guide du bridge, limite de la preuve",
+            "it": "guida del bridge, limite delle prove",
+            "ja": "ブリッジガイド、証拠の境界",
+            "zh": "桥接指南、证据边界",
+            "pt": "guia do bridge, limite da evidência"
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "project tools, CI checks, version bump",
+            "es": "herramientas del proyecto, comprobaciones de CI, subida de versión",
+            "de": "Projektwerkzeuge, CI-Prüfungen, Versionserhöhung",
+            "fr": "outils du projet, vérifications CI, montée de version",
+            "it": "strumenti del progetto, controlli CI, aumento di versione",
+            "ja": "プロジェクトのツール、CI の検査、バージョンの引き上げ",
+            "zh": "项目工具、CI 检查、版本提升",
+            "pt": "ferramentas do projeto, verificações de CI, subida de versão"
+          },
+          "tree_desc": {
+            "en": "build and test runner, version bump, CI validator, README and picture generators and checks",
+            "es": "ejecutor de compilación y pruebas, subida de versión, validador de CI, generadores y comprobaciones de README e imágenes",
+            "de": "Build- und Testläufer, Versionserhöhung, CI-Prüfer, README- und Bildgeneratoren samt Prüfungen",
+            "fr": "exécuteur de build et de tests, montée de version, validateur CI, générateurs et vérifications des README et des images",
+            "it": "esecutore di build e test, aumento di versione, validatore CI, generatori e controlli di README e immagini",
+            "ja": "ビルド・テスト実行、バージョン引き上げ、CI 検証、README と図の生成・検査",
+            "zh": "构建与测试运行器、版本提升、CI 校验、README 与图片的生成和检查",
+            "pt": "executor de compilação e testes, subida de versão, validador de CI, geradores e verificações de README e imagens"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "banner and the pictures of the README",
+            "es": "banner y las imágenes del README",
+            "de": "Banner und die Bilder der README",
+            "fr": "bannière et images du README",
+            "it": "banner e immagini del README",
+            "ja": "バナーと README の図",
+            "zh": "横幅图与 README 的图片",
+            "pt": "faixa e imagens do README"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow CI et modèles de tickets",
+            "it": "workflow CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de questões"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "pyproject.toml",
+          "desc": {
+            "en": "package metadata and dependencies",
+            "es": "metadatos del paquete y dependencias",
+            "de": "Paketmetadaten und Abhängigkeiten",
+            "fr": "métadonnées du paquet et dépendances",
+            "it": "metadati del pacchetto e dipendenze",
+            "ja": "パッケージのメタデータと依存関係",
+            "zh": "包元数据与依赖",
+            "pt": "metadados do pacote e dependências"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン・成熟度・ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变化",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "build.sh  build.bat",
+          "tree_name": "build.sh build.bat",
+          "desc": {
+            "en": "build scripts (they never change the version)",
+            "es": "scripts de compilación (nunca cambian la versión)",
+            "de": "Build-Skripte (ändern die Version nie)",
+            "fr": "scripts de build (ils ne changent jamais la version)",
+            "it": "script di build (non cambiano mai la versione)",
+            "ja": "ビルドスクリプト（バージョンは変えません）",
+            "zh": "构建脚本（从不改变版本）",
+            "pt": "scripts de compilação (nunca mudam a versão)"
+          }
+        },
+        {
+          "name": "build-test.sh  build-test.bat",
+          "tree_name": "build-test.sh build-test.bat",
+          "desc": {
+            "en": "build scripts (they never change the version)",
+            "es": "scripts de compilación (nunca cambian la versión)",
+            "de": "Build-Skripte (ändern die Version nie)",
+            "fr": "scripts de build (ils ne changent jamais la version)",
+            "it": "script di build (non cambiano mai la versione)",
+            "ja": "ビルドスクリプト（バージョンは変えません）",
+            "zh": "构建脚本（从不改变版本）",
+            "pt": "scripts de compilação (nunca mudam a versão)"
+          }
+        },
+        {
+          "name": "test.sh  test.bat",
+          "tree_name": "test.sh test.bat",
+          "desc": {
+            "en": "run the tests",
+            "es": "ejecutan las pruebas",
+            "de": "führen die Tests aus",
+            "fr": "lancent les tests",
+            "it": "eseguono i test",
+            "ja": "テストを実行",
+            "zh": "运行测试",
+            "pt": "executam os testes"
+          }
+        },
+        {
+          "name": "SECURITY  SUPPORT  CONTRIBUTING  LICENSE",
+          "tree_name": "SECURITY.md SUPPORT.md CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE LICENSE.md",
+          "desc": {
+            "en": "community and licence files",
+            "es": "comunidad y licencia",
+            "de": "Community und Lizenz",
+            "fr": "communauté et licence",
+            "it": "comunità e licenza",
+            "ja": "コミュニティとライセンス",
+            "zh": "社区与许可证",
+            "pt": "comunidade e licença"
+          },
+          "tree_desc": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "repo": "HYDRA-UMC-BRIDGE-CNC",
+  "ecosystem": "hydra",
+  "tagline": "A fail-safe snapshot of a CNC cell: the controller reports, the shared gate decides.",
+  "description": "HYDRA-UMC-BRIDGE-CNC reads the state of a CNC controller (GRBL, LinuxCNC or CNCjs) and the E-STOP and door of the cell, turns it into a cell snapshot and passes every job through the shared evaluate_job gate of HYDRA-UMC-SDK; the answers go out over MQTT. The controller keeps trajectory, spindle and limit authority.",
+  "columns": [
+    "WHO COMMANDS IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "broker",
+      "column": 0,
+      "level": "external",
+      "title": "HYDRA-UMC-MQTT-BROKER",
+      "lines": [
+        "carries cmd/ and the",
+        "state and result topics"
+      ],
+      "title_size": 12
+    },
+    {
+      "id": "sdk",
+      "column": 0,
+      "level": "contract",
+      "title": "HYDRA-UMC-SDK",
+      "lines": [
+        "evaluate_job(): the gate",
+        "every bridge shares"
+      ]
+    },
+    {
+      "id": "mqtt",
+      "column": 1,
+      "level": "tested",
+      "title": "mqtt_transport.py",
+      "lines": [
+        "routes cmd/ topics, answers",
+        "on result, Last Will"
+      ],
+      "code": [
+        "src/hydra_umc_bridge_cnc/mqtt_transport.py::TOPIC_PREFIX"
+      ]
+    },
+    {
+      "id": "cell",
+      "column": 1,
+      "level": "contract",
+      "title": "cell.py",
+      "lines": [
+        "CncSnapshot: E-STOP and door",
+        "before controller state;",
+        "MTConnect view (read only)"
+      ],
+      "code": [
+        "src/hydra_umc_bridge_cnc/cell.py::machine_state",
+        "src/hydra_umc_bridge_cnc/mtconnect_publish.py"
+      ]
+    },
+    {
+      "id": "links",
+      "column": 1,
+      "level": "tested",
+      "title": "controller links",
+      "lines": [
+        "GRBL serial, LinuxCNC,",
+        "CNCjs: read, pause, resume"
+      ],
+      "code": [
+        "src/hydra_umc_bridge_cnc/controller.py",
+        "src/hydra_umc_bridge_cnc/cncjs_link.py",
+        "src/hydra_umc_bridge_cnc/linuxcnc_link.py"
+      ]
+    },
+    {
+      "id": "grbl",
+      "column": 2,
+      "level": "untested",
+      "title": "GRBL controller",
+      "lines": [
+        "serial port; never run",
+        "against a real machine"
+      ]
+    },
+    {
+      "id": "lcnc",
+      "column": 2,
+      "level": "untested",
+      "title": "LinuxCNC / CNCjs",
+      "lines": [
+        "only met simulations"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "broker",
+      "to": "mqtt",
+      "label": "cmd/job",
+      "level": "tested"
+    },
+    {
+      "from": "mqtt",
+      "to": "cell",
+      "level": "tested"
+    },
+    {
+      "from": "sdk",
+      "to": "cell",
+      "label": "gate",
+      "level": "contract"
+    },
+    {
+      "from": "cell",
+      "to": "links",
+      "level": "tested"
+    },
+    {
+      "from": "links",
+      "to": "grbl",
+      "label": "serial",
+      "level": "untested"
+    },
+    {
+      "from": "links",
+      "to": "lcnc",
+      "label": "link",
+      "level": "untested"
+    }
+  ],
+  "footer": "Not tried against a real controller: the GRBL, LinuxCNC and CNCjs links met an emulator and simulations only."
+}
