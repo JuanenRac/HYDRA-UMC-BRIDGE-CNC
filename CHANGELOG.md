@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
+
 ## [0.2.0] - Controller links and spindle gate
 
 - **Controller links.** The bridge talks to its machine through `ControllerLink`: GRBL on a serial port (the default), a LinuxCNC installation (`linuxcnc_link.py`: reads `linuxcnc.stat`, sends only pause, abort and resume through `linuxcnc.command`, never runs a program) and a CNCjs server that owns the port (`cncjs_link.py`: reads its `controller:state` broadcast and sends only `feedhold`, `reset` and `cyclestart`, so the bridge works beside the sender that runs the programs). A resume needs a READY cell and a machine that is really holding on every link, and an old or missing reading is never an idle machine. Tested against `SimulatedLinuxcnc` and `SimulatedCncjs`; neither has touched a real LinuxCNC or CNCjs.
