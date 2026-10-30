@@ -76,7 +76,7 @@ def snapshot_from_mtconnect_execution(execution: object, *, estop: object, door_
 
     state_map = {
         "READY": "IDLE",
-        "STOPPED": "IDLE",
+        "STOPPED": "STOPPED",
         "ACTIVE": "RUNNING",
         "EXECUTING": "RUNNING",
         "FEED_HOLD": "HOLD",

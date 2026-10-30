@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 from hydra_umc_sdk.bridge_contract import MachineState
 
-from .cell import CncSnapshot
+from .cell import STOPPED_STATE, CncSnapshot
 
 DEFAULT_DEVICE = "CncCell"
 MAX_CLIENTS = 16
@@ -46,6 +46,8 @@ _EXECUTION = {
     MachineState.FAULT: "STOPPED",
     MachineState.SAFE_STOP: "INTERRUPTED",
 }
+# a machine that waits for its operator is STOPPED too, whichever state stands for it
+_EXECUTION[STOPPED_STATE] = "STOPPED"
 
 
 @dataclass(frozen=True)

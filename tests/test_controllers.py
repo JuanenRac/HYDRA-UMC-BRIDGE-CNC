@@ -439,7 +439,7 @@ class MtconnectTests(unittest.TestCase):
         self.assertEqual(values["system"], "NORMAL")
 
     def test_the_executions(self):
-        cases = {"Run": "ACTIVE", "Hold:0": "FEED_HOLD", "Alarm": "STOPPED"}
+        cases = {"Run": "ACTIVE", "Hold:0": "FEED_HOLD", "Alarm": "STOPPED", "Stopped": "STOPPED"}
         for word, execution in cases.items():
             with self.subTest(word=word):
                 self.assertEqual(self.values(CncSnapshot(word, False, True))["execution"], execution)

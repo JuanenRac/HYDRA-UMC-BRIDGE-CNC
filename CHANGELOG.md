@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A stopped machine is no longer read as idle:** an MTConnect `STOPPED` execution (stopped until an operator resets it) used to be read as `IDLE`, so a consumer could treat the machine as free for work after a stop. It is now its own `STOPPED` machine state: no work is allowed on it, it is not resumed like a feed hold, and the MTConnect view publishes it as `STOPPED`. The state comes with the SDK release that adds it; until the pin moves the bridge reports `FAULT` for it, which refuses the same things.
+
 - **The serial port of a GRBL board can be shared with a G-code sender:** `multiplexer.py` owns the port and serves one sender at a time over TCP (loopback only by default) while the bridge keeps its status queries and its three real-time bytes; the bridge cannot write anything else through it. It is off by default and is switched on with `HYDRA_UMC_CNC_PORT_SHARING=multiplexer`. Tested against the GRBL emulator; not run on a real board.
 
 ## [0.2.1] - Jobs through the shared intake, answers matched to their requests and a test of the real serial port

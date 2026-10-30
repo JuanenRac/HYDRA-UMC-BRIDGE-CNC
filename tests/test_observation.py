@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from hydra_umc_sdk.bridge_contract import MachineState
+from hydra_umc_bridge_cnc.cell import STOPPED_STATE
 from hydra_umc_bridge_cnc.observation import snapshot_from_grbl_status, snapshot_from_mapping, snapshot_from_mtconnect_execution
 
 
@@ -35,6 +36,24 @@ class CncObservationTests(unittest.TestCase):
         self.assertEqual(snapshot_from_mtconnect_execution("READY", estop=False, door_closed=True).machine_state(), MachineState.IDLE)
         self.assertEqual(snapshot_from_mtconnect_execution("UNKNOWN", estop=False, door_closed=True).machine_state(), MachineState.OFFLINE)
         self.assertEqual(snapshot_from_mtconnect_execution("READY", estop=False, door_closed="true").machine_state(), MachineState.SAFE_STOP)
+
+    def test_mtconnect_stopped_is_not_idle_and_cannot_be_resumed(self):
+        # STOPPED in MTConnect means stopped until the operator resets it, not ready for work.
+        snapshot = snapshot_from_mtconnect_execution("STOPPED", estop=False, door_closed=True)
+        self.assertNotEqual(snapshot.machine_state(), MachineState.IDLE)
+        self.assertNotEqual(snapshot.machine_state(), MachineState.HOLDING)
+        self.assertEqual(snapshot.machine_state(), STOPPED_STATE)
+
+    def test_a_stopped_machine_gets_no_work(self):
+        from hydra_umc_bridge_cnc.cell import CncCellBridge
+        from hydra_umc_sdk.bridge_contract import BridgeJob, CellState, JobPhase
+        snapshot = snapshot_from_mtconnect_execution("STOPPED", estop=False, door_closed=True)
+        job = BridgeJob("j1", "k1", "test", JobPhase.LOAD, MachineState.IDLE, {})
+        self.assertFalse(CncCellBridge().plan(job, CellState.READY, snapshot).allowed)
+
+    @unittest.skipUnless(hasattr(MachineState, "STOPPED"), "the SDK of this pin has no STOPPED state yet")
+    def test_stopped_is_its_own_machine_state_when_the_sdk_has_it(self):
+        self.assertIs(STOPPED_STATE, MachineState.STOPPED)
 
     def test_mtconnect_feed_hold_and_interrupted_map_to_holding_not_running(self):
         # MTConnect's real FEED_HOLD/INTERRUPTED executions mean the

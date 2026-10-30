@@ -12,6 +12,11 @@ from dataclasses import dataclass
 
 from hydra_umc_sdk.bridge_contract import BridgeJob, CellState, GateDecision, JobPhase, MachineState, evaluate_job
 
+# A machine that is stopped and does not go on until an operator resets it (MTConnect STOPPED). It is its own state: it is not
+# IDLE (no work may start on it) and not HOLDING (it cannot be resumed). The state exists in the SDK from the release that adds
+# it; with an older SDK the bridge falls back to FAULT, which refuses everything a stopped machine refuses.
+STOPPED_STATE = getattr(MachineState, "STOPPED", MachineState.FAULT)
+
 # The phases in which a robot arm reaches into the machine (it loads or unloads a part): a spindle that is still turning,
 # or a feed that is still moving, is a hazard that an IDLE controller state alone does not rule out.
 ARM_ENTRY_PHASES = frozenset({JobPhase.LOAD, JobPhase.UNLOAD})
@@ -87,6 +92,9 @@ class CncSnapshot:
         # in the sibling PRINTER3D bridge.
         if state == "HOLD":
             return MachineState.HOLDING
+        # Stopped until the operator resets it: neither ready (IDLE) nor a pause that can be resumed (HOLDING).
+        if state == "STOPPED":
+            return STOPPED_STATE
         # GRBL's real "Alarm" state is its most safety-critical report - a
         # limit-switch trip, lost position, or unresolved E-STOP - and was
         # previously swallowed by the OFFLINE fallback below, indistinguishable
