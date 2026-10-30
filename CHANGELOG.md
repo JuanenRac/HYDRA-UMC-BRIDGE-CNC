@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.1] - Jobs through the shared intake, answers matched to their requests and a test of the real serial port
+
 - **Jobs go through the shared intake of the SDK:** the check of a malformed job and of a repeated `idempotency_key` is the SDK's `JobIntake` instead of code of this bridge (the keys are no longer prefixed with `job:`).
 
 - **A caller can match each answer to its request:** a command payload that is a JSON object may carry a `request_id` (a plain token of up to 64 characters: letters, digits, `.`, `_`, `:`, `-`); every result the bridge publishes for that message carries it back, also the one stored for a repeated idempotency key. The state topics are not changed. 6 tests.
