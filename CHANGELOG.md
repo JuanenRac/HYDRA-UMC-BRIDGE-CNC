@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The serial port of a GRBL board can be shared with a G-code sender:** `multiplexer.py` owns the port and serves one sender at a time over TCP (loopback only by default) while the bridge keeps its status queries and its three real-time bytes; the bridge cannot write anything else through it. It is off by default and is switched on with `HYDRA_UMC_CNC_PORT_SHARING=multiplexer`. Tested against the GRBL emulator; not run on a real board.
+
 ## [0.2.1] - Jobs through the shared intake, answers matched to their requests and a test of the real serial port
 
 - **Jobs go through the shared intake of the SDK:** the check of a malformed job and of a repeated `idempotency_key` is the SDK's `JobIntake` instead of code of this bridge (the keys are no longer prefixed with `job:`).

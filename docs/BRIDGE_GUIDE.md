@@ -24,7 +24,19 @@ GPL-3.0-or-later - see LICENSE
 - `LinuxcncController` (`linuxcnc_link.py`) - a LinuxCNC installation on the same host. It reads `linuxcnc.stat` (task state, interpreter state, emergency stop, spindle, velocity, position) and sends only `auto(AUTO_PAUSE)` (feed hold), `abort()` (reset) and `auto(AUTO_RESUME)` (resume) through `linuxcnc.command`; it never opens or runs a program, never changes the task state and never sets a spindle. LinuxCNC has no door signal: `door_closed` comes from the cell (a HAL pin the integrator exposes), as for GRBL, and the emergency stop is the OR of LinuxCNC's own and the cell's. `open_linuxcnc()` imports the `linuxcnc` module lazily; `SimulatedLinuxcnc` is the in-memory machine the tests run against.
 - `CncjsController` (`cncjs_link.py`) - a CNCjs server that owns the serial port. The bridge connects to the CNCjs socket.io API, listens to the `controller:state` it already broadcasts and sends only the commands `feedhold`, `reset` and `cyclestart` on the open port; it never sends `gcode`, `unlock`, `homing` or `sleep`. CNCjs stays the sender that runs the programs, so the bridge no longer takes the single serial port away from it. A reading older than `max_age_seconds` (default 3) is not trusted: an old or missing state is never an idle machine and the door counts as open, like a failed serial query. `open_cncjs()` imports a socket.io client lazily (install one compatible with your CNCjs); `SimulatedCncjs` is the in-memory server the tests run against.
 
-Pass `controller=` to `CncMqttBridge` to use one of the last two instead of a serial connection. Both links have only been exercised against their simulations.
+Pass `controller=` to `CncMqttBridge` to use one of the last two instead of a serial connection.
+
+### Sharing the serial port (`multiplexer.py`)
+
+A GRBL board has one serial port. With `HYDRA_UMC_CNC_PORT_SHARING=multiplexer` the bridge can keep the port and still leave the machine to a G-code sender: `share_serial_port(port)` returns the connection the bridge should use (`GrblController(connection)`) and a `SerialMultiplexer` that owns the real port and serves **one** sender at a time over TCP (`HYDRA_UMC_CNC_PORT_SHARING_LISTEN`, default `127.0.0.1:5700`; point UGS, bCNC, CNCjs or LaserGRBL at that address as a raw TCP / `socket://` connection instead of the serial device).
+
+- What the controller writes goes to the sender as it comes, and every complete line is also kept for the bridge's status queries.
+- What the sender writes goes to the controller as it comes: the multiplexer does not rewrite, delay or inspect a program. The optional `sender_allowed` gate holds a line of the sender while it answers no (the sender gets `error:9`); real-time bytes of the sender are never held.
+- The bridge writes only GRBL's real-time bytes (`?`, `!`, `~`, Ctrl-X); anything else it tries to write raises an error, so it cannot stream a program through the multiplexer either. A real-time byte goes out between two bytes of the sender.
+- The default is conservative: sharing is **off** (the bridge holds the port alone, as before), the front listens on the loopback address only (any other address needs `HYDRA_UMC_CNC_PORT_SHARING_ALLOW_REMOTE=1`), and a second sender is refused while one is connected. A word the configuration does not know means off.
+- A status report that the bridge asked for also reaches the sender, which is harmless to the senders that poll the status themselves. A soft reset sent by the bridge resets the controller under the sender, exactly as it would at the machine.
+
+It is tested against the GRBL emulator of the test suite and a real TCP socket; it has not run against a real GRBL board. Both links have only been exercised against their simulations.
 
 ## The spindle gate
 

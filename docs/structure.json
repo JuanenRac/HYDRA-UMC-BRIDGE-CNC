@@ -97,6 +97,19 @@
           }
         },
         {
+          "name": "multiplexer.py",
+          "desc": {
+            "en": "serial port multiplexer: the bridge and a G-code sender share one GRBL port",
+            "es": "multiplexor del puerto serie: el puente y un emisor de G-code comparten un puerto GRBL",
+            "de": "Multiplexer des seriellen Ports: Bridge und G-Code-Sender teilen sich einen GRBL-Port",
+            "fr": "multiplexeur du port série : le pont et un émetteur de G-code partagent un port GRBL",
+            "it": "multiplexer della porta seriale: il bridge e un invio di G-code condividono una porta GRBL",
+            "ja": "シリアルポートのマルチプレクサ：ブリッジと G コード送信側が GRBL の 1 ポートを共有",
+            "zh": "串口多路复用器：桥接与 G 代码发送端共用一个 GRBL 串口",
+            "pt": "multiplexador da porta série: a ponte e um emissor de G-code partilham uma porta GRBL"
+          }
+        },
+        {
           "name": "mtconnect_publish.py",
           "desc": {
             "en": "MTConnect observations and the read-only SHDR adapter",
@@ -143,14 +156,14 @@
         {
           "name": "tests/",
           "desc": {
-            "en": "208 tests, with a hand-written GRBL emulator",
-            "es": "208 pruebas, con un emulador GRBL escrito a mano",
-            "de": "208 Tests, mit einem handgeschriebenen GRBL-Emulator",
-            "fr": "208 tests, avec un émulateur GRBL écrit à la main",
-            "it": "208 test, con un emulatore GRBL scritto a mano",
-            "ja": "208 件（手書きの GRBL エミュレーター付き）",
-            "zh": "208 项测试（含手写 GRBL 模拟器）",
-            "pt": "208 testes, com um emulador GRBL escrito à mão"
+            "en": "228 tests, with a hand-written GRBL emulator",
+            "es": "228 pruebas, con un emulador GRBL escrito a mano",
+            "de": "228 Tests, mit einem handgeschriebenen GRBL-Emulator",
+            "fr": "228 tests, avec un émulateur GRBL écrit à la main",
+            "it": "228 test, con un emulatore GRBL scritto a mano",
+            "ja": "228 件（手書きの GRBL エミュレーター付き）",
+            "zh": "228 项测试（含手写 GRBL 模拟器）",
+            "pt": "228 testes, com um emulador GRBL escrito à mão"
           }
         },
         {

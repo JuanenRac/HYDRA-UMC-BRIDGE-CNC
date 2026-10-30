@@ -6,6 +6,7 @@
 """Safe high-level CNC cell coordination; never a real-time motion driver."""
 
 from .cell import CncCellBridge, CncSnapshot, spindle_gate_from_environment
+from .multiplexer import MuxBridgeLink, PortSharingConfig, SerialMultiplexer, port_sharing_from_environment, share_serial_port
 from .cncjs_link import CncjsController, SimulatedCncjs, open_cncjs, snapshot_from_cncjs_state
 from .controller import ControllerLink, GrblController, ReadOnlyController
 from .linuxcnc_link import LinuxcncController, SimulatedLinuxcnc, open_linuxcnc, snapshot_from_linuxcnc_stat
@@ -27,6 +28,11 @@ __all__ = [
     "CncCellBridge",
     "CncSnapshot",
     "spindle_gate_from_environment",
+    "MuxBridgeLink",
+    "PortSharingConfig",
+    "SerialMultiplexer",
+    "port_sharing_from_environment",
+    "share_serial_port",
     "ControllerLink",
     "GrblController",
     "ReadOnlyController",
