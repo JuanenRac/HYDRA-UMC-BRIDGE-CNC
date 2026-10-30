@@ -12,7 +12,7 @@ version = "0.2.1"
 description = "Fail-safe HYDRA-UMC CNC coordination boundary"
 requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
-dependencies = ["hydra-umc-sdk @ git+https://github.com/JuanenRac/HYDRA-UMC-SDK.git@v0.4.0#subdirectory=clients/python"]
+dependencies = ["hydra-umc-sdk @ git+https://github.com/JuanenRac/HYDRA-UMC-SDK.git@v0.4.1#subdirectory=clients/python"]
 
 [project.optional-dependencies]
 # Only open_serial_port() needs this - it's imported lazily (see
