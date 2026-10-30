@@ -109,12 +109,12 @@ flowchart LR
 
 * ✅ **真实的故障安全单元快照:** `cell.py` 中的 `CncSnapshot.machine_state()` 会先检查急停(E-STOP)和门状态,*然后*才查看控制器上报的任何内容 —— 只要急停被触发或门未关闭,状态始终解析为 `SAFE_STOP`,与 `controller_state` 报告的内容无关。*(已实现,并在 `tests/test_cell.py` 中测试)*
 * ✅ **真实的共享安全门控:** 每个被观察到的任务都会通过 `HYDRA-UMC-SDK` 的 `bridge_contract` 中的 `evaluate_job()` 重新评估,这与所有兄弟桥接使用的是同一个门控。*(已实现)*
+* ✅ **共享串口：** GRBL 板只有一个串口。`multiplexer.py` 可以拥有它并提供一个 TCP 前端（默认仅限回环地址），一次只有一个 G 代码发送端可以连接，而桥接仍保留其状态查询和三个实时字节；桥接绝不会写入其他内容，第二个发送端会被拒绝。默认关闭（`HYDRA_UMC_CNC_PORT_SHARING=multiplexer` 开启；`HYDRA_UMC_CNC_PORT_SHARING_LISTEN` 和 `HYDRA_UMC_CNC_PORT_SHARING_ALLOW_REMOTE` 设置地址）。已用 GRBL 模拟器测试，尚未在真实 GRBL 板上运行。*（已实现，仅模拟）*
 * ✅ **保守的状态映射:** 只有 `IDLE` 被视为空闲;`RUN`/`RUNNING`/`JOG`/`HOME` 映射为 `RUNNING`,`FAULT`/`ERROR`/`OFF`/`ALARM` 映射为 `FAULT`,任何无法识别的值都会回落到 `OFFLINE`——绝不会回落到允许生产性工作的状态。(`HOLD` → `HOLDING`; `DOOR` → `SAFE_STOP`) *(已实现)*
 * ✅ **只读控制器证据:** `observation.py` 严格规范化本地映射证据和提供的 GRBL 状态行;缺失或非布尔的 E-STOP/门信号会安全失效关闭。*(已实现,在 `tests/test_observation.py` 中测试)*
 * ✅ **真实的 GRBL 串行传输:** `serial_transport.py` 的 `GrblSerialProbe` 打开真实的串行连接并查询 GRBL 的实时状态字节(`?`);`GrblRealtimeControl` 只发送 GRBL 自身的实时控制字节(进给保持、循环恢复、软复位)——`cycle_start_resume()` 仅在机器真正处于 `HOLDING` 状态时才被允许,其他命令则始终允许,如 `ABORT`。它从不流式传输 G-code 程序。*(已实现,在 `tests/test_serial_transport.py` 中测试)*
 * ✅ **非变更式构建/测试:** `build-test.bat`/`.sh` 编译源码并运行安全门控测试套件,不会触碰版本文件或 CHANGELOG。*(已实现,见下方"构建与发布")*
 * ✅ **控制器连接:** 桥接通过 `ControllerLink`(`controller.py`)与控制器通信:桥接自己持有串口的 GRBL(`GrblController`)、LinuxCNC 安装(`linuxcnc_link.py`:读取 `linuxcnc.stat`,仅通过 `linuxcnc.command` 发送暂停、中止和恢复已暂停的程序,绝不运行程序)以及拥有该串口的 CNCjs 服务器(`cncjs_link.py`:读取它广播的 `controller:state`,仅发送 `feedhold`、`reset` 和 `cyclestart`,使桥接与运行程序的发送端并行工作)。恢复始终要求单元为 READY 且机器确实处于暂停状态;过期或缺失的读数绝不等同于空闲的机器。两种连接都针对模拟器测试(`SimulatedLinuxcnc`、`SimulatedCncjs`);都没有接触过真实的 LinuxCNC 或 CNCjs。*(已实现,仅模拟)*
-* ✅ **共享串口：** GRBL 板只有一个串口。`multiplexer.py` 可以拥有它并提供一个 TCP 前端（默认仅限回环地址），一次只有一个 G 代码发送端可以连接，而桥接仍保留其状态查询和三个实时字节；桥接绝不会写入其他内容，第二个发送端会被拒绝。默认关闭（`HYDRA_UMC_CNC_PORT_SHARING=multiplexer` 开启；`HYDRA_UMC_CNC_PORT_SHARING_LISTEN` 和 `HYDRA_UMC_CNC_PORT_SHARING_ALLOW_REMOTE` 设置地址）。已用 GRBL 模拟器测试，尚未在真实 GRBL 板上运行。*（已实现，仅模拟）*
 * ✅ **主轴门控:** 当控制器空闲但仍报告主轴在转或进给在动(`FS:`)时,拒绝上料或下料。`HYDRA_UMC_CNC_SPINDLE_GATE` 取值 `off`、`when_known`(默认:拒绝已报告的情况)或 `required`(也拒绝控制器未报告的情况)。快照还携带报告中的位置、工件偏置和倍率。*(已实现)*
 * ✅ **MTConnect 视图:** `mtconnect_publish.py` 将快照转换为 MTConnect 观测值(`avail`、`execution`、`estop`、`door`、`spindle_speed`、`path_feedrate`、`system`),由 `ShdrAdapter` 以 SHDR 经 TCP 提供(只读;唯一接受的行是 `* PING`),并在设置 `HYDRA_UMC_CNC_MTCONNECT=1` 时以保留消息发布到 `hydra/bridges/cnc/mtconnect`。不上报的控制器是 `UNAVAILABLE`,绝不是 `READY`。已针对模拟代理测试。*(已实现,尚未用真实代理试过)*
 * 🔜 **LinuxCNC HAL 引脚** —— 尚未实现;目前还没有驱动过真实的 CNC 控制器、HAL 引脚或机器人。*(计划中)*
