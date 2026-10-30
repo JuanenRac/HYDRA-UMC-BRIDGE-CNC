@@ -119,6 +119,8 @@ flowchart LR
 * 🔜 **LinuxCNC HAL 引脚** —— 尚未实现;目前还没有驱动过真实的 CNC 控制器、HAL 引脚或机器人。*(计划中)*
 * ✅ **重复的幂等键：** `CncMqttBridge` 接受 `IdempotencyStore`：重复的作业键会得到第一次给出的答复，而不是被重新评估。*（已实现，已在 `tests/test_idempotency.py` 中测试）*
 * ✅ **对齐的状态回复、故障安全的串口、加固的 MQTT 循环:** 状态查询会丢弃已在等待的内容,发送 `?`,并一直读取到真正的状态报告(`<...>`)到达:GRBL 未经询问发出的启动横幅、`ok`、`[MSG:...]` 和 `ALARM:n` 不再让之后的每次查询都落后一条回复;缺少 USB 设备(或链路上的任何故障)会以故障安全方式失败,而不是让桥接结束,并且打开端口时不会拉高 DTR;`cmd/feed_hold` 会报告控制器随后的反馈(`controller_state_after`、`confirmed`),`cmd/feed_hold` 和 `cmd/soft_reset` 在独立通道上运行,因此状态查询绝不会拖延它们;过大(超过 16 KiB)、无法读取或深度嵌套的负载以及任何意外故障,都会在结果主题上得到拒绝回复,绝不会终止循环;`cmd/job` 的回复带有 `"mode": "gate-only"`,通过它发出的 ABORT 会说明没有停止任何东西;状态带有 `observed_at`,桥接在带遗嘱(Last Will)的 `availability` 主题上宣告自己。GRBL 只有一个串口:本桥接占用它期间,任何 G-code 发送器都无法使用它(参见 `docs/BRIDGE_GUIDE.md`)。*(已实现,在 `tests/test_hardening.py` 中测试)*
+* ✅ **作业经由共享的受理环节:** 对格式错误的作业和重复的 `idempotency_key` 的检查，由 SDK 的 `JobIntake` 完成，而不是此桥接自己的代码(键不再带 `job:` 前缀)。
+* ✅ **与请求对应的响应:** 作为 JSON 对象的命令负载可以带一个 `request_id`(最长 64 个字符的普通令牌:字母、数字、`.`、`_`、`:`、`-`)，桥接为该消息发布的每个结果都会带回它，包括为重复幂等键保存的结果。状态主题不变。
 
 ## 🔒 安全与防护
 
