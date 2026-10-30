@@ -257,6 +257,7 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── mtconnect_publish.py       MTConnect 观测值与只读 SHDR 适配器
 │   └── mqtt_transport.py          MQTT 命令与状态传输
 ├── tests/                         238 项测试（含手写 GRBL 模拟器）
+├── deploy/                        systemd 单元和示例配置
 ├── docs/                          桥接指南、证据边界
 ├── tools/                         构建与测试运行器、版本提升、CI 校验、README 与图片的生成和检查
 ├── images/                        横幅图与 README 的图片

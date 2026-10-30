@@ -167,6 +167,29 @@
           }
         },
         {
+          "name": "deploy/",
+          "desc": {
+            "en": "systemd unit and example configuration",
+            "es": "unidad systemd y configuración de ejemplo",
+            "de": "systemd-Unit und Beispielkonfiguration",
+            "fr": "unité systemd et configuration d'exemple",
+            "it": "unità systemd e configurazione di esempio",
+            "ja": "systemd ユニットと設定例",
+            "zh": "systemd 单元和示例配置",
+            "pt": "unidade systemd e configuração de exemplo"
+          },
+          "tree_desc": {
+            "en": "systemd unit and example configuration",
+            "es": "unidad systemd y configuración de ejemplo",
+            "de": "systemd-Unit und Beispielkonfiguration",
+            "fr": "unité systemd et configuration d'exemple",
+            "it": "unità systemd e configurazione di esempio",
+            "ja": "systemd ユニットと設定例",
+            "zh": "systemd 单元和示例配置",
+            "pt": "unidade systemd e configuração de exemplo"
+          }
+        },
+        {
           "name": "docs/",
           "desc": {
             "en": "bridge guide, evidence boundary",

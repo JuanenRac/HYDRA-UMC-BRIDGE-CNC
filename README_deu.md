@@ -257,6 +257,7 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── mtconnect_publish.py       MTConnect-Beobachtungen und der schreibgeschützte SHDR-Adapter
 │   └── mqtt_transport.py          MQTT-Transport für Befehle und Status
 ├── tests/                         238 Tests, mit einem handgeschriebenen GRBL-Emulator
+├── deploy/                        systemd-Unit und Beispielkonfiguration
 ├── docs/                          Bridge-Leitfaden, Grenze der Nachweise
 ├── tools/                         Build- und Testläufer, Versionserhöhung, CI-Prüfer, README- und Bildgeneratoren samt Prüfungen
 ├── images/                        Banner und die Bilder der README
