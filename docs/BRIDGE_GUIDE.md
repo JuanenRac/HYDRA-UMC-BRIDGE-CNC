@@ -73,3 +73,15 @@ Add the standard header, explain the safe scope, number console steps and use `p
 ## Hardware acceptance gate
 
 Identify the controller and interface, bind evidence to that controller, validate E-STOP/door signals independently, test stale/offline behavior, conduct dry auxiliary-cell trials and complete HIL before relying on the command path (feed hold, soft reset, cycle start/resume) that already exists. The native CNC controller remains authoritative.
+
+## Running as a service
+
+`python -m hydra_umc_bridge_cnc --config /etc/hydra-umc/bridge-cnc.toml` (the path can also come from `HYDRA_UMC_BRIDGE_CNC_CONFIG`) starts the bridge. Nothing that depends on the machine is in the code: the file `deploy/bridge-cnc.example.toml` shows every key.
+
+- `[controller]`: `kind` is `grbl` (a board on a serial port: `device`, `baud`, `timeout_seconds`), `cncjs` (`url` and the port CNCjs has open as `device`; the token comes from `HYDRA_UMC_CNC_CNCJS_TOKEN`) or `linuxcnc`.
+- `[port_sharing]`: the multiplexer for a G-code sender, off unless `enabled`; it listens on the loopback address unless `allow_remote` is set.
+- `[estop]` and `[door]`: `source` is `gpio` (`chip`, `line`, `debounce_ms`) or `file` (`path`, `max_age_seconds`), with `unsafe_level` (`high` or `low`) declaring what the signal reads when the cell is NOT safe. The bias of a GPIO line makes a cut wire read as unsafe. A signal with no source is E-STOP pressed or door open.
+- `[cell_state]`: `fixed` (the default, `INHIBITED`) or `file`; a file that is missing, unknown or stale is `SAFE_STOP`.
+- `[gate]` (`spindle`: `off`, `when_known` or `required`), `[mtconnect]`, `[mqtt]` and `[idempotency]`. The MQTT user, password and TLS come from `HYDRA_MQTT_*` in the environment of the service, not from the file.
+
+A key the service does not know is refused and `--check` validates the file without starting anything. `deploy/hydra-umc-bridge-cnc.service` is the systemd unit: it checks the file before starting, restarts on failure and allows only the GPIO chip and the serial devices. The service has run against the GRBL emulator and simulated signals; it has not run on a real machine.

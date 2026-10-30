@@ -105,6 +105,8 @@ flowchart LR
 
 観測ヘルパーはエビデンスの正規化を行うものであり、コントローラーアダプターではない——HAL、シリアル、ネットワークのいずれの接続も開かない。[Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) は、実際のコントローラー統合の前に必要な検証を定義している。
 
+**サービスとしての実行。** `python -m hydra_umc_bridge_cnc --config /etc/hydra-umc/bridge-cnc.toml` は、1 つの TOML ファイルからブリッジを起動します。コントローラー（シリアルポート上の GRBL ボード、CNCjs、LinuxCNC）、非常停止とドアの取得元（宣言した危険レベルを持つ GPIO ライン、または小さなファイル）、G コード送信ソフトとのシリアルポート共有、スピンドルゲート、MTConnect、MQTT ブローカー、セル状態の取得元を設定します。未知のキーは拒否され、信号の取得元は配線を宣言する必要があり、すべて安全側（フェイルクローズ）に倒れます。取得元のない信号は「非常停止が押された」「ドアが開いている」、ファイルが無い・不明・古い信号やセル状態は危険側の答えになります。`--check` はファイルを検証し、`deploy/` には systemd ユニット（`Restart=on-failure`）と設定例があります。GRBL エミュレーターと模擬信号に対して動作確認済みで、実機では動かしていません。
+
 ## ✨ 機能
 
 * ✅ **実在するフェイルセーフなセルスナップショット:** `cell.py` の `CncSnapshot.machine_state()` は、コントローラーが報告する内容を見る*前に*E-STOPとドア状態を確認する —— E-STOPが作動しているか、ドアが閉じていない場合、`controller_state` の内容に関わらず常に `SAFE_STOP` へ解決される。*(実装済み、`tests/test_cell.py` でテスト済み)*

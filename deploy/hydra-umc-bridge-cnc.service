@@ -1,0 +1,47 @@
+# =============================================================================
+# HYDRA-UMC-BRIDGE-CNC - systemd unit
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# The bridge coordinates a CNC cell; it never streams a program. The configuration is /etc/hydra-umc/bridge-cnc.toml
+# (example: deploy/bridge-cnc.example.toml); the MQTT credentials go in /etc/hydra-umc/bridge-cnc.env
+# (HYDRA_MQTT_USERNAME=..., readable by root only).
+[Unit]
+Description=HYDRA-UMC-BRIDGE-CNC CNC cell coordination and job gate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hydra-umc-bridge-cnc
+Group=hydra-umc-bridge-cnc
+SupplementaryGroups=gpio dialout
+WorkingDirectory=/opt/hydra-umc/bridge-cnc
+Environment=PYTHONPATH=/opt/hydra-umc/bridge-cnc/src
+Environment=HYDRA_UMC_BRIDGE_CNC_CONFIG=/etc/hydra-umc/bridge-cnc.toml
+EnvironmentFile=-/etc/hydra-umc/bridge-cnc.env
+ExecStartPre=/usr/bin/python3 -m hydra_umc_bridge_cnc --check
+ExecStart=/usr/bin/python3 -m hydra_umc_bridge_cnc
+Restart=on-failure
+RestartSec=5
+StateDirectory=hydra-umc-bridge-cnc
+RuntimeDirectory=hydra-umc
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# the GPIO chip and the serial port are the only devices it needs
+DevicePolicy=closed
+DeviceAllow=/dev/gpiochip0 rw
+DeviceAllow=char-ttyUSB rw
+DeviceAllow=char-ttyACM rw
+MemoryAccounting=yes
+MemoryHigh=128M
+MemoryMax=192M
+
+[Install]
+WantedBy=multi-user.target

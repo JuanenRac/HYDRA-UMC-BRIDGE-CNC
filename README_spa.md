@@ -105,6 +105,8 @@ flowchart LR
 
 Los asistentes de observación son normalizadores de evidencia, no adaptadores de controlador: no abren enlaces HAL, serie ni de red. [Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) define la validación necesaria antes de una integración real con el controlador.
 
+**Funcionamiento como servicio.** `python -m hydra_umc_bridge_cnc --config /etc/hydra-umc/bridge-cnc.toml` arranca el bridge desde un único fichero TOML: el controlador (una placa GRBL en un puerto serie, CNCjs o LinuxCNC), el origen del paro de emergencia y de la puerta (una línea GPIO con su nivel inseguro declarado, o un fichero pequeño), el reparto del puerto serie con un emisor de G-code, la compuerta del husillo, MTConnect, el broker MQTT y el origen del estado de la celda. Una clave que no conoce se rechaza, un origen de señal tiene que declarar su cableado y todo falla cerrado: una señal sin origen es paro de emergencia pulsado o puerta abierta, y una señal o fichero de estado de la celda ausente, desconocido o caducado da la respuesta insegura. `--check` valida el fichero; `deploy/` contiene la unidad systemd (`Restart=on-failure`) y un fichero de ejemplo. Se ha ejecutado contra el emulador GRBL y señales simuladas, no en una máquina real.
+
 ## ✨ Funciones
 
 * ✅ **Instantánea de celda segura por defecto, real:** `cell.py` — `CncSnapshot.machine_state()` comprueba el E-STOP y el estado de la puerta *antes* de mirar nada que reporte el controlador; un E-STOP activo o una puerta abierta siempre resuelven en `SAFE_STOP`, sin importar lo que diga `controller_state`. *(implementado, probado en `tests/test_cell.py`)*

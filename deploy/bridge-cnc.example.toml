@@ -1,0 +1,69 @@
+# =============================================================================
+# HYDRA-UMC-BRIDGE-CNC - Example configuration (copy to /etc/hydra-umc/bridge-cnc.toml)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Every value that depends on the machine lives here. The MQTT user, password and TLS are NOT here
+# (HYDRA_MQTT_* in /etc/hydra-umc/bridge-cnc.env), nor is the CNCjs token (HYDRA_UMC_CNC_CNCJS_TOKEN).
+
+[mqtt]
+host = "127.0.0.1"
+port = 1883
+client_id = "hydra-umc-bridge-cnc"
+
+# The controller: "grbl" (a board on a serial port), "cncjs" (a CNCjs server) or "linuxcnc".
+[controller]
+kind = "grbl"
+device = "/dev/ttyUSB0"      # a port name or a stable USB serial number
+baud = 115200
+timeout_seconds = 1.0
+# url = "http://127.0.0.1:8000"   # cncjs only; "device" is then the port CNCjs has open
+
+# Share the one serial port of a GRBL board with a G-code sender (UGS, bCNC, CNCjs, LaserGRBL).
+# The sender connects to host:port instead of the serial device. Off unless asked for.
+[port_sharing]
+enabled = false
+host = "127.0.0.1"
+port = 5700
+
+# The E-STOP and the door. "unsafe_level" is what the signal reads when the cell is NOT safe: write what your wiring does.
+# A signal with no source is "E-STOP pressed" / "door open" (fail-closed).
+[estop]
+source = "gpio"
+chip = "/dev/gpiochip0"
+line = 23
+unsafe_level = "high"        # a normally-closed chain to ground: pressed or cut reads high
+debounce_ms = 10
+
+[door]
+source = "gpio"
+chip = "/dev/gpiochip0"
+line = 24
+unsafe_level = "high"        # the closed door pulls the line to ground
+debounce_ms = 10
+
+# A signal can also come from a small file kept up to date by whoever measures it ("1" or "0"):
+# [door]
+# source = "file"
+# path = "/run/hydra-umc/cnc_door"
+# unsafe_level = "low"       # the file holds 0 while the door is open
+# max_age_seconds = 30
+
+# Where the state of the cell (READY, INHIBITED, FAULT, SAFE_STOP) comes from.
+#   fixed: always "value" (the default is INHIBITED: nothing gets work)
+#   file:  the first word of "path"; a missing, unknown or older-than-max_age_seconds file is SAFE_STOP
+[cell_state]
+source = "file"
+path = "/run/hydra-umc/cell_state"
+max_age_seconds = 30
+
+# The spindle gate for the phases in which an arm reaches into the machine: off, when_known or required.
+[gate]
+spindle = "when_known"
+
+[mtconnect]
+enabled = false
+
+# Keep the idempotency keys in a file so that a restarted bridge refuses a job it already handled.
+[idempotency]
+path = "/var/lib/hydra-umc-bridge-cnc/idempotency.sqlite"

@@ -105,6 +105,8 @@ flowchart LR
 
 这些观测辅助函数是证据规范化器,而不是控制器适配器:它们不会打开任何 HAL、串口或网络连接。[Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) 定义了进行真实控制器集成之前所需的验证。
 
+**作为服务运行。** `python -m hydra_umc_bridge_cnc --config /etc/hydra-umc/bridge-cnc.toml` 从一个 TOML 文件启动桥接：控制器（串口上的 GRBL 板、CNCjs 或 LinuxCNC）、急停和门的信号来源（带有已声明不安全电平的 GPIO 线路，或一个小文件）、与 G 代码发送器共享串口、主轴闸门、MTConnect、MQTT 代理以及单元状态的来源。未知的键会被拒绝，信号来源必须声明其接线，所有情况都失败即关闭：没有来源的信号视为急停被按下或门已打开，信号或单元状态文件缺失、未知或过期时给出不安全的答复。`--check` 校验该文件；`deploy/` 中有 systemd 单元（`Restart=on-failure`）和示例文件。它已针对 GRBL 模拟器和模拟信号运行，尚未在真实机器上运行。
+
 ## ✨ 功能
 
 * ✅ **真实的故障安全单元快照:** `cell.py` 中的 `CncSnapshot.machine_state()` 会先检查急停(E-STOP)和门状态,*然后*才查看控制器上报的任何内容 —— 只要急停被触发或门未关闭,状态始终解析为 `SAFE_STOP`,与 `controller_state` 报告的内容无关。*(已实现,并在 `tests/test_cell.py` 中测试)*

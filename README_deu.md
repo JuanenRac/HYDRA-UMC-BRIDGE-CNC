@@ -105,6 +105,8 @@ flowchart LR
 
 Die Beobachtungs-Hilfsfunktionen sind Evidenz-Normalisierer, keine Controller-Adapter: sie öffnen keine HAL-, seriellen oder Netzwerkverbindungen. [Controller Evidence Boundary](docs/CONTROLLER_EVIDENCE_BOUNDARY.md) definiert die Validierung, die vor einer echten Controller-Integration erforderlich ist.
 
+**Betrieb als Dienst.** `python -m hydra_umc_bridge_cnc --config /etc/hydra-umc/bridge-cnc.toml` startet den Bridge aus einer einzigen TOML-Datei: die Steuerung (eine GRBL-Platine an einer seriellen Schnittstelle, CNCjs oder LinuxCNC), die Quellen von NOT-HALT und Tür (eine GPIO-Leitung mit ihrem deklarierten unsicheren Pegel oder eine kleine Datei), die gemeinsame Nutzung der seriellen Schnittstelle mit einem G-Code-Sender, das Spindeltor, MTConnect, der MQTT-Broker und die Quelle des Zellenzustands. Ein unbekannter Schlüssel wird abgelehnt, eine Signalquelle muss ihre Verdrahtung deklarieren und alles fällt geschlossen aus: ein Signal ohne Quelle bedeutet NOT-HALT gedrückt oder Tür offen, und ein Signal oder eine Zellenzustandsdatei, die fehlt, unbekannt oder veraltet ist, liefert die unsichere Antwort. `--check` prüft die Datei; `deploy/` enthält die systemd-Unit (`Restart=on-failure`) und eine Beispieldatei. Er lief gegen den GRBL-Emulator und simulierte Signale, nicht an einer echten Maschine.
+
 ## ✨ Funktionen
 
 * ✅ **Echter ausfallsicherer Zellen-Snapshot:** `cell.py` — `CncSnapshot.machine_state()` prüft E-STOP und Türzustand, *bevor* überhaupt betrachtet wird, was der Controller meldet; ein ausgelöster E-STOP oder eine offene Tür führen immer zu `SAFE_STOP`, unabhängig davon, was `controller_state` sagt. *(implementiert, getestet in `tests/test_cell.py`)*
