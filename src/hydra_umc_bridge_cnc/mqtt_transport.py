@@ -114,7 +114,7 @@ def with_request_id(publishes: list[MqttPublish], request_id: str | None) -> lis
                 body = None
             if isinstance(body, dict):
                 body["request_id"] = request_id
-                publish = MqttPublish(publish.topic, json.dumps(body), publish.retain)
+                publish = MqttPublish(publish.topic, json.dumps(body), publish.retain, publish.qos)
         out.append(publish)
     return out
 

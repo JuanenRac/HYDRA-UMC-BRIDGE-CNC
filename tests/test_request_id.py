@@ -27,6 +27,11 @@ class RequestIdTests(unittest.TestCase):
         for bad in (b"", b"not json", b"[1]", b'{"request_id": 5}', b'{"request_id": ""}', b'{"request_id": "has space"}', b'{"request_id": "' + b"x" * 65 + b'"}', b'{"a": 1}'):
             self.assertIsNone(request_id_of(bad), bad)
 
+    def test_adding_the_request_id_keeps_the_qos_and_retain_of_a_result(self):
+        for qos in (0, 1, 2):
+            out = with_request_id([MqttPublish(f"{TOPIC_PREFIX}cmd/status/result", '{"a": 1}', retain=True, qos=qos)], "req-9")
+            self.assertEqual((out[0].qos, out[0].retain, json.loads(out[0].payload)["request_id"]), (qos, True, "req-9"))
+
     def test_the_result_of_a_job_carries_the_request_id(self):
         b, _, _ = bridge()
         out = b.handle_message(f"{TOPIC_PREFIX}cmd/job", job_payload("req-7"))
