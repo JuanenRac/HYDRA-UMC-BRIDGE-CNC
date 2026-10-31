@@ -18,14 +18,14 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg" alt="Python">
   <img src="https://img.shields.io/badge/Safety-Fails%20Closed-red.svg" alt="Safety">
-  <img src="https://img.shields.io/badge/Tests-238%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-253%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.2.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
-> **Verificação de honestidade - o que realmente corre hoje:** o instantâneo de célula com falha segura e a porta de segurança (o `CncSnapshot`/`CncCellBridge` de `cell.py`, que encaminha cada trabalho pelo `evaluate_job()` do próprio `HYDRA-UMC-SDK`), o normalizador só de leitura de evidência GRBL/MTConnect (`observation.py`), o transporte série GRBL real (o `GrblSerialProbe`/`GrblRealtimeControl` de `serial_transport.py`) e o transporte MQTT de comandos/estado (`mqtt_transport.py`) são reais e estão cobertos por 238 casos `unittest` que passam (`python tools/build_test.py`), incluindo `tests/test_grbl_emulator.py`, que executa este bridge contra um emulador GRBL v1.1 escrito à mão e fiel ao protocolo. Nada disto tocou numa porta série real, num broker MQTT real nem num controlador CNC verdadeiro: o `FakeSerial` de `test_serial_transport.py` substitui uma ligação física, e `test_mqtt_transport.py` usa um cliente de broker falso do mesmo modo. As ligações ao LinuxCNC e ao CNCjs e a vista MTConnect só conheceram simulações, não há adaptador HAL do LinuxCNC nem comando `run` vivo, porque nenhum controlador real foi acionado; ver «Roteiro e limites conhecidos» abaixo, que já o diz com clareza, e `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
+> **Verificação de honestidade - o que realmente corre hoje:** o instantâneo de célula com falha segura e a porta de segurança (o `CncSnapshot`/`CncCellBridge` de `cell.py`, que encaminha cada trabalho pelo `evaluate_job()` do próprio `HYDRA-UMC-SDK`), o normalizador só de leitura de evidência GRBL/MTConnect (`observation.py`), o transporte série GRBL real (o `GrblSerialProbe`/`GrblRealtimeControl` de `serial_transport.py`) e o transporte MQTT de comandos/estado (`mqtt_transport.py`) são reais e estão cobertos por 253 casos `unittest` que passam (`python tools/build_test.py`), incluindo `tests/test_grbl_emulator.py`, que executa este bridge contra um emulador GRBL v1.1 escrito à mão e fiel ao protocolo. Nada disto tocou numa porta série real, num broker MQTT real nem num controlador CNC verdadeiro: o `FakeSerial` de `test_serial_transport.py` substitui uma ligação física, e `test_mqtt_transport.py` usa um cliente de broker falso do mesmo modo. As ligações ao LinuxCNC e ao CNCjs e a vista MTConnect só conheceram simulações, não há adaptador HAL do LinuxCNC nem comando `run` vivo, porque nenhum controlador real foi acionado; ver «Roteiro e limites conhecidos» abaixo, que já o diz com clareza, e `CHANGELOG.md` para saber exatamente o que foi entregue até agora.
 
 > **Estado de segurança (safety e security):** este ecossistema não é um sistema de segurança certificado. Ainda não existe um caminho de E-STOP por hardware, nem limites ou interlocks impostos pelo firmware, nem um comando de movimento verificado; as imagens de firmware são verificadas com CRC-32 e uma assinatura Ed25519, e uma compilação de versão recusa as chaves de desenvolvimento publicadas (as cabeças de ferramenta e as placas de expansão atrás do relé ainda usam os bootloaders do URTC, que aceitam um HMAC-SHA256 de chave partilhada em vez de uma assinatura); TLS e TLS mútuo são opcionais e estão desativados por defeito; nenhuma placa própria foi ainda montada ou testada. Leia a [base de segurança](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) e o [modelo de ameaças](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) antes de confiar em qualquer afirmação aqui para a segurança de uma pessoa.
 
@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.2.1` |
 | Maturidade | Funcional |
-| Testes | 238 (`python tools/build_test.py`) |
+| Testes | 253 (`python tools/build_test.py`) |
 | Tecnologia | Python / LinuxCNC / G-code / GRBL status evidence / GRBL serial transport |
 | Destino | O Raspberry Pi CM5 de uma célula HYDRA-UMC |
 | Em hardware real | Só simulado: testado com emuladores, dublês de teste ou simuladores; não há registo de execução em hardware real para esta versão |
@@ -53,7 +53,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟡 | Funciona para o seu propósito principal; a verificação de honestidade acima lista o que ainda falta |
-| Testes | 🟢 | 238 testes automáticos, executados a cada alteração |
+| Testes | 🟢 | 253 testes automáticos, executados a cada alteração |
 | Hardware real | 🟠 | Só simulado: testado com emuladores, dublês de teste ou simuladores; não há registo de execução em hardware real para esta versão |
 | Documentação | 🟢 | README em oito idiomas, verificado contra o manifesto a cada alteração |
 
@@ -195,7 +195,7 @@ O nome de utilizador, a palavra-passe e os ficheiros TLS vêm das variáveis `HY
 
 ## 🧪 Testes
 
-238 casos `unittest` automáticos correm com `python tools/build_test.py` (que também compila cada módulo). Os testes não precisam de hardware, rede nem pacotes opcionais: os que precisariam de `paho-mqtt`, `pyserial` ou de uma biblioteca do fabricante usam um substituto ou são saltados se o pacote faltar.
+253 casos `unittest` automáticos correm com `python tools/build_test.py` (que também compila cada módulo). Os testes não precisam de hardware, rede nem pacotes opcionais: os que precisariam de `paho-mqtt`, `pyserial` ou de uma biblioteca do fabricante usam um substituto ou são saltados se o pacote faltar.
 
 | Ficheiro de testes | Testes | O que cobre |
 |---|---|---|
@@ -222,7 +222,7 @@ bash build-test.sh
 bash build.sh
 ```
 
-`build-test` compila com `py_compile` cada módulo em `src/` e executa a suíte `unittest` completa descoberta em `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 238 testes), que prova, entre tudo o resto que cobre, a admissão com inatividade segura, a rejeição por porta aberta e o encaminhamento de aborto; nunca modifica o repositório. `build` executa primeiro essa mesma validação e, só se correr bem, chama `tools/bump_version.py` para sincronizar a versão em `pyproject.toml`, `hydra-umc.project.json` e `CHANGELOG.md`. Ainda não há comando `run` de CNC viva: exige uma integração validada com um controlador.
+`build-test` compila com `py_compile` cada módulo em `src/` e executa a suíte `unittest` completa descoberta em `tests/` (`test_cell.py`, `test_observation.py`, `test_serial_transport.py`, `test_mqtt_transport.py`, `test_grbl_emulator.py`, `test_hardening.py`, `test_idempotency.py`, `test_mqtt_environment.py` - 253 testes), que prova, entre tudo o resto que cobre, a admissão com inatividade segura, a rejeição por porta aberta e o encaminhamento de aborto; nunca modifica o repositório. `build` executa primeiro essa mesma validação e, só se correr bem, chama `tools/bump_version.py` para sincronizar a versão em `pyproject.toml`, `hydra-umc.project.json` e `CHANGELOG.md`. Ainda não há comando `run` de CNC viva: exige uma integração validada com um controlador.
 
 ## 🩺 Resolução de problemas
 
@@ -277,7 +277,7 @@ HYDRA-UMC-BRIDGE-CNC/
 
 **Limites conhecidos hoje**
 
-**Real hoje:** versão `0.2.1`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de 238 testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
+**Real hoje:** versão `0.2.1`, um coordenador de célula com falha segura testado localmente (`CncSnapshot` + `CncCellBridge`) apoiado pela porta de trabalhos partilhada do `HYDRA-UMC-SDK`, uma normalização estrita e só de leitura da evidência do controlador que cobre todo o vocabulário de estados real do GRBL v1.1, incluindo os subestados reais `Hold:N`/`Door:N` (`Idle`/`Run`/`Jog`/`Home`/`Hold`/`Alarm`/`Door`), mais os estados de execução do MTConnect, um transporte série real (`GrblSerialProbe`/`GrblRealtimeControl`) que pode consultar o estado e enviar os bytes de controlo em tempo real próprios do GRBL por uma ligação verdadeira (a leitura viva da porta/paragem de emergência faz-se agora logo a seguir à ida e volta bloqueante dessa consulta, nunca antes dela, e uma escrita real curta ou de zero bytes comunica-se como não executada e não como falso êxito), uma suíte `unittest` determinista de 253 testes e scripts build-test que não alteram nada ligados ao CI com um checkout do SDK.
 
 **Fronteira de integração:** o controlador CNC (GRBL, LinuxCNC ou o que está por trás do CNCjs) mantém em todo o momento a autoridade sobre a trajetória, o fuso e os limites da máquina; este bridge apenas regula o trabalho robótico *auxiliar*, nunca o movimento do controlador.
 
