@@ -110,7 +110,7 @@ class BrokerProcess:
             except _PortTaken:
                 self.stop()
                 if attempt == attempts - 1:
-                    raise RuntimeError("the broker could not take a port of its own")
+                    raise RuntimeError("the broker could not take a port of its own") from None
                 self.port = free_port()
 
     def _start_once(self, timeout: float) -> None:
