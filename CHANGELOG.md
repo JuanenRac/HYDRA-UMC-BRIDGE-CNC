@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.4] - Steadier broker tests
+
 - **Steadier broker tests:** two test runs at once could be given the same port and end up sharing one broker, which made the last-will test see another run's availability message. The port of a test broker is now claimed with a file only one run can create, and a broker that lost the race for its port is detected and replaced.
 
 ## [0.2.3] - Every answer to a command published at QoS 1 and a bridge that can follow the global stop of the server
