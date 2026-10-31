@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.2.2] - The bridge runs as a service, a stopped machine is no longer read as idle, a shared GRBL serial port, a result that keeps its QoS and a transport tested against a real broker
+
 - **A result keeps its QoS when a `request_id` is added to it:** the copy that carries the id used to fall back to QoS 0, which would have silently lowered any result a bridge publishes at QoS 1 or 2.
 
 - **The MQTT transport is tested against a real broker:** `tests/test_broker_integration.py` starts a `HYDRA-UMC-MQTT-BROKER` on a free local port and runs the bridge through the shared client: the retained availability, a command answered at QoS 0, 1 and 2, a retained command that is only a replay, messages published at each QoS, the last will after an unclean loss of the link and the way back after the broker went down and up. It skips itself when node, `paho-mqtt` or the installed broker (`HYDRA_UMC_TEST_BROKER_DIR`, default the folder next to this one) are missing.
