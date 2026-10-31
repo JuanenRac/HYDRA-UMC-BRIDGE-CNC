@@ -106,6 +106,9 @@ def request_id_of(payload: bytes) -> str | None:
     return value if isinstance(value, str) and _REQUEST_ID.fullmatch(value) else None
 
 
+RESULT_QOS = 1  # an answer to a command is published at least once, like the events of the other bridges
+
+
 def with_request_id(publishes: list[MqttPublish], request_id: str | None) -> list[MqttPublish]:
     """Adds `request_id` to every result the bridge publishes for a command, so that a caller with several commands in flight can tell which answer is which. The state topics are left alone."""
     if request_id is None:
@@ -129,7 +132,7 @@ def _refusal(suffix: str, reason: str) -> list[MqttPublish]:
     parts = suffix.split("/")
     if len(parts) != 2 or parts[0] != "cmd":
         return []
-    return [MqttPublish(f"{TOPIC_PREFIX}{suffix}/result", json.dumps({"allowed": False, "executed": False, "reason": reason}))]
+    return [MqttPublish(f"{TOPIC_PREFIX}{suffix}/result", json.dumps({"allowed": False, "executed": False, "reason": reason}), qos=RESULT_QOS)]
 
 
 class CncMqttBridge:
@@ -280,10 +283,10 @@ class CncMqttBridge:
             if result.executed:
                 # GRBL does not answer "!": ask it what it is doing now, so that "sent" is not read as "stopped"
                 self._confirm(answer)
-            return [MqttPublish(f"{TOPIC_PREFIX}cmd/feed_hold/result", json.dumps(answer))]
+            return [MqttPublish(f"{TOPIC_PREFIX}cmd/feed_hold/result", json.dumps(answer), qos=RESULT_QOS)]
         if suffix == "cmd/soft_reset":
             result = self._controller.soft_reset()
-            return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)))]
+            return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)), qos=RESULT_QOS)]
         if suffix == "cmd/cycle_start_resume":
             # this used to reuse self._last_snapshot - whatever
             # was last queried, possibly from a `cmd/status` poll seconds
@@ -298,7 +301,7 @@ class CncMqttBridge:
             # a cached read for a command that actually moves the machine.
             snapshot = self.refresh_status()
             result = self._controller.cycle_start_resume(self._cell_state(), snapshot)
-            return [MqttPublish(f"{TOPIC_PREFIX}cmd/cycle_start_resume/result", json.dumps(asdict(result)))]
+            return [MqttPublish(f"{TOPIC_PREFIX}cmd/cycle_start_resume/result", json.dumps(asdict(result)), qos=RESULT_QOS)]
         if suffix == "cmd/job":
             return [self._handle_job(payload)]
         return []
@@ -325,17 +328,17 @@ class CncMqttBridge:
             raw = json.loads(payload)
         except (json.JSONDecodeError, UnicodeDecodeError) as error:
             decision = {"allowed": False, "reason": f"malformed job payload: {error}"}
-            return MqttPublish(result_topic, json.dumps(decision))
+            return MqttPublish(result_topic, json.dumps(decision), qos=RESULT_QOS)
         intake = self._intake.accept(raw if isinstance(raw, dict) else {})
         if intake.job is None:
             reason = intake.reason.removeprefix("malformed job: ")
-            return MqttPublish(result_topic, json.dumps({"allowed": False, "reason": f"malformed job payload: {reason}"}))
+            return MqttPublish(result_topic, json.dumps({"allowed": False, "reason": f"malformed job payload: {reason}"}), qos=RESULT_QOS)
         job = intake.job
         key = job.idempotency_key
         if intake.duplicate:
             stored = self._idempotency.recall(key) if self._idempotency is not None else None
             fallback = {"allowed": False, "reason": "this idempotency_key was already handled"}
-            return MqttPublish(result_topic, stored if stored is not None else json.dumps(fallback))
+            return MqttPublish(result_topic, stored if stored is not None else json.dumps(fallback), qos=RESULT_QOS)
         try:
             # -
             # same real gap as cycle_start_resume above: gating a new job
@@ -350,11 +353,11 @@ class CncMqttBridge:
                 # the shared gate always lets an abort through, but THIS topic only answers a question: it stops nothing
                 result["forwarded"] = False
                 result["reason"] = "abort acknowledged by the gate only - nothing was stopped; publish cmd/feed_hold to stop the machine"
-            return self._answer(key, MqttPublish(result_topic, json.dumps(result)))
+            return self._answer(key, MqttPublish(result_topic, json.dumps(result), qos=RESULT_QOS))
         except Exception as error:  # noqa: BLE001
             _LOG.exception("cmd/job failed")
             failure = {"allowed": False, "reason": f"the job could not be handled: {type(error).__name__}"}
-            return self._answer(key, MqttPublish(result_topic, json.dumps(failure)))
+            return self._answer(key, MqttPublish(result_topic, json.dumps(failure), qos=RESULT_QOS))
 
     def _answer(self, key: str, publish: MqttPublish) -> MqttPublish:
         if self._idempotency is not None:

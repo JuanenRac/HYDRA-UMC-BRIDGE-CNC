@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Every answer to a command is published at QoS 1:** the results on `cmd/<verb>/result` (feed hold, soft reset, cycle start, job, refusals and the stored answer of a repeated key) carry `qos=1` through the `qos` field of the SDK's `MqttPublish`, so a subscriber of QoS 1 or 2 gets them at least once; they used to go out at QoS 0. The retained `state` and MTConnect topics keep QoS 0. `tests/test_result_qos.py` checks every answer and runs the bridge against a real broker on a free local port.
+
 - **The bridge can follow the global stop of the server, off by default:** with `HYDRA_UMC_CNC_GLOBAL_STOP=1` and the table `[global_stop]` of the configuration file it subscribes to the retained announcement on `hydra/swarm/safety/estop` (`HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` changes the topic) and, while the last message says `SAFE_STOP`, says anything but `READY` or cannot be read, `cmd/cycle_start_resume` and `cmd/job` (an abort passes) are refused with the reason in the answer; stops and read-only requests keep working and only `READY` ends it. `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT=1` also refuses until the first announcement has been heard. Without the switch nothing changes. `tests/test_global_stop.py` covers the guard and the refusals, `tests/test_global_stop_broker.py` runs them against a real broker on a free local port (the announcement is delivered at QoS 0, 1 and 2, a retained stop is obeyed at connect, an unreadable one fails closed).
 
 ## [0.2.2] - The bridge runs as a service, a stopped machine is no longer read as idle, a shared GRBL serial port, a result that keeps its QoS and a transport tested against a real broker
