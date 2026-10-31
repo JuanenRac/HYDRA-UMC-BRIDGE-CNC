@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Steadier broker tests:** two test runs at once could be given the same port and end up sharing one broker, which made the last-will test see another run's availability message. The port of a test broker is now claimed with a file only one run can create, and a broker that lost the race for its port is detected and replaced.
+
 ## [0.2.3] - Every answer to a command published at QoS 1 and a bridge that can follow the global stop of the server
 
 - **Every answer to a command is published at QoS 1:** the results on `cmd/<verb>/result` (feed hold, soft reset, cycle start, job, refusals and the stored answer of a repeated key) carry `qos=1` through the `qos` field of the SDK's `MqttPublish`, so a subscriber of QoS 1 or 2 gets them at least once; they used to go out at QoS 0. The retained `state` and MTConnect topics keep QoS 0. `tests/test_result_qos.py` checks every answer and runs the bridge against a real broker on a free local port.

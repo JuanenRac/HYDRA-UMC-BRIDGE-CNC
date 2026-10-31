@@ -22,6 +22,7 @@ import queue
 import shutil
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 import unittest
@@ -50,23 +51,69 @@ def skip_reason() -> str | None:
     return None
 
 
+_CLAIM_SECONDS = 180.0
+
+
+def _claim(port: int) -> bool:
+    """Marks `port` as taken by this run in a file every other run on the machine looks at; False when somebody claimed it recently.
+
+    The operating system gives the same port to two probes that ask at about the same moment (the probe socket is closed before the broker binds it),
+    so two test runs at once could end up sharing a broker. The claim is a file made with O_EXCL: only one run can make it. Old claims are ignored."""
+    path = Path(tempfile.gettempdir()) / f"hydra-umc-test-port-{port}.claim"
+    for _ in range(2):
+        try:
+            os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - path.stat().st_mtime < _CLAIM_SECONDS:
+                    return False
+                path.unlink()
+            except OSError:
+                return False
+        except OSError:
+            return True  # cannot write claims here: fall back to the plain behaviour
+    return False
+
+
 def free_port() -> int:
     while True:
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
-        if port not in _FORBIDDEN_PORTS:
+        if port not in _FORBIDDEN_PORTS and _claim(port):
             return port
+
+
+class _PortTaken(Exception):
+    """The port chosen for a broker was taken by somebody else before the broker bound it."""
 
 
 class BrokerProcess:
     """One broker process of our own; `stop()` and `start()` again on the same port simulate the broker going down and coming back."""
 
     def __init__(self, port: int | None = None) -> None:
+        self._port_is_ours_to_choose = port is None
         self.port = port or free_port()
         self._process: subprocess.Popen[bytes] | None = None
 
     def start(self, timeout: float = 30.0) -> None:
+        """Starts the broker and returns once it listens. A port the operating system handed out a moment ago can be handed to a second test run
+        at the same time (the probe socket is closed before the broker binds it); then the broker that loses the race exits, while the port still
+        answers because the winner holds it, and this test would talk to somebody else's broker. So a connection only counts when the process we
+        started is still alive afterwards, and a port that was ours to pick is picked again when it was not."""
+        attempts = 8 if self._port_is_ours_to_choose else 1
+        for attempt in range(attempts):
+            try:
+                self._start_once(timeout)
+                return
+            except _PortTaken:
+                self.stop()
+                if attempt == attempts - 1:
+                    raise RuntimeError("the broker could not take a port of its own")
+                self.port = free_port()
+
+    def _start_once(self, timeout: float) -> None:
         environment = {key: value for key, value in os.environ.items() if not key.startswith(("MQTT_", "HYDRA_UMC_BROKER", "HYDRA_MQTT_")) and key != "PORT"}
         environment.update({"HYDRA_UMC_BROKER_PORT": str(self.port), "MQTT_BIND_HOST": "127.0.0.1", "NODE_ENV": "development"})
         self._process = subprocess.Popen(
@@ -79,12 +126,22 @@ class BrokerProcess:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if self._process.poll() is not None:
+                if self._port_is_ours_to_choose:
+                    raise _PortTaken()
                 raise RuntimeError(f"the broker exited at once with code {self._process.returncode}")
             try:
                 with socket.create_connection(("127.0.0.1", self.port), timeout=0.5):
-                    return
+                    pass
             except OSError:
                 time.sleep(0.2)
+                continue
+            # somebody listens: make sure it is us (a broker that lost the race for the port exits within a moment)
+            time.sleep(0.75)
+            if self._process.poll() is not None:
+                if self._port_is_ours_to_choose:
+                    raise _PortTaken()
+                raise RuntimeError(f"the broker exited at once with code {self._process.returncode}")
+            return
         self.stop()
         raise RuntimeError("the broker did not listen in time")
 
