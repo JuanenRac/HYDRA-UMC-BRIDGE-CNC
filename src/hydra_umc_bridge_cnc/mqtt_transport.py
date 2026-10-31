@@ -58,7 +58,7 @@ from typing import Callable
 from hydra_umc_sdk.bridge_contract import CellState, JobPhase, MachineState, decision_to_dict
 from hydra_umc_sdk.job_intake import IdempotencyStore, JobIntake
 from hydra_umc_sdk.bridge_transport import MessageDispatcher as SharedMessageDispatcher
-from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open_bridge_client
+from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open_bridge_client  # noqa: F401  (re-exported)
 
 from .cell import CncCellBridge, CncSnapshot, spindle_gate_from_environment
 from .controller import ControllerLink, GrblController
@@ -327,8 +327,8 @@ class CncMqttBridge:
             # E-STOP activated) since the last poll go unnoticed. Always
             # refresh_status() live before the gate decides.
             snapshot = self.refresh_status()
-            decision = self._gate.plan(job, self._cell_state(), snapshot)
-            result = decision_to_dict(decision)
+            gate_decision = self._gate.plan(job, self._cell_state(), snapshot)
+            result = decision_to_dict(gate_decision)
             result["mode"] = "gate-only"
             if job.phase is JobPhase.ABORT:
                 # the shared gate always lets an abort through, but THIS topic only answers a question: it stops nothing
@@ -404,6 +404,6 @@ def run_forever(
             max_connect_attempts=max_connect_attempts,
             connect_retry_delay_seconds=connect_retry_delay_seconds,
         )
-        client.loop_forever()
+        client.loop_forever()  # type: ignore[attr-defined]
     finally:
         dispatcher.close(wait=False)

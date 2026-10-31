@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from hydra_umc_sdk.bridge_contract import CellState
 from hydra_umc_sdk.serial_link import RealtimeCommandResult, call_bool
@@ -90,7 +90,7 @@ def _spindle_speed(stat: object) -> float | None:
 def _position(stat: object) -> tuple[float, ...] | None:
     values = getattr(stat, "actual_position", None)
     try:
-        numbers = tuple(_finite(value) for value in list(values)[:6])
+        numbers = tuple(_finite(value) for value in list(values)[:6])  # type: ignore[arg-type]
     except TypeError:
         return None
     return numbers if numbers and all(number is not None for number in numbers) else None  # type: ignore[return-value]
@@ -114,8 +114,8 @@ def snapshot_from_linuxcnc_stat(
     safeguard_door = door_closed if isinstance(door_closed, bool) else False
     get = lambda name: _constant(constants, name)  # noqa: E731
     try:
-        task_state = getattr(stat, "task_state")
-        interp_state = getattr(stat, "interp_state")
+        task_state = getattr(stat, "task_state")  # noqa: B009
+        interp_state = getattr(stat, "interp_state")  # noqa: B009
         stat_estop = bool(getattr(stat, "estop", False))
     except AttributeError:
         return CncSnapshot("", safeguard_estop, safeguard_door)
@@ -134,13 +134,13 @@ def snapshot_from_linuxcnc_stat(
         elif interp_state == get("INTERP_IDLE"):
             velocity = _finite(getattr(stat, "current_vel", 0.0)) or 0.0
             controller_state = "JOG" if velocity > 0.0 else "IDLE"
-    velocity = _finite(getattr(stat, "current_vel", None))
+    current_velocity = _finite(getattr(stat, "current_vel", None))
     return CncSnapshot(
         controller_state,
         safeguard_estop or stat_estop,
         safeguard_door,
         spindle_speed=_spindle_speed(stat),
-        feed_rate=velocity * 60.0 if velocity is not None else None,  # machine units per second -> per minute
+        feed_rate=current_velocity * 60.0 if current_velocity is not None else None,  # machine units per second -> per minute
         machine_position=_position(stat),
     )
 
@@ -176,7 +176,7 @@ class LinuxcncController(ReadOnlyController):
             return refusal
         return self._send(lambda command: command.auto(_constant(self._constants, "AUTO_RESUME")), "resume sent to LinuxCNC")
 
-    def _send(self, action: Callable[[object], object], ok_reason: str) -> RealtimeCommandResult:
+    def _send(self, action: Callable[[Any], object], ok_reason: str) -> RealtimeCommandResult:
         try:
             action(self._command)
             wait = getattr(self._command, "wait_complete", None)

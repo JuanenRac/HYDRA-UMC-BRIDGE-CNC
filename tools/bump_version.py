@@ -16,11 +16,11 @@ def next_version(value: str) -> str:
     if minor==10: major, minor=major+1, 0
     return f'{major}.{minor}.{patch}'
 def main() -> int:
-    manifest=json.loads(MANIFEST.read_text(encoding='utf-8')); declared=manifest.get('version'); pyproject=PYPROJECT.read_text(encoding='utf-8'); match=PATTERN.search(pyproject)
-    if not isinstance(declared,str) or match is None: raise SystemExit('ERROR: manifest or pyproject native version is invalid')
-    native='.'.join(match.group(index) for index in (1,2,3))
+    manifest=json.loads(MANIFEST.read_text(encoding='utf-8')); declared=manifest.get('version'); pyproject=PYPROJECT.read_text(encoding='utf-8'); found=PATTERN.search(pyproject)
+    if not isinstance(declared,str) or found is None: raise SystemExit('ERROR: manifest or pyproject native version is invalid')
+    native='.'.join(found.group(index) for index in (1,2,3))
     if native != declared: raise SystemExit(f'ERROR: native version {native} differs from manifest {declared}; repair the mismatch before building')
-    updated=next_version(native); pyproject=pyproject[:match.start()]+f'version = "{updated}"'+pyproject[match.end():]; manifest['version']=updated
+    updated=next_version(native); pyproject=pyproject[:found.start()]+f'version = "{updated}"'+pyproject[found.end():]; manifest['version']=updated
     changelog=CHANGELOG.read_text(encoding='utf-8'); first=re.search(r'(?m)^## \[\d+\.\d+\.\d+\]',changelog)
     if first is None: raise SystemExit('ERROR: CHANGELOG.md has no release heading')
     entry=f'## [{updated}]\n\n- Successful incremental build: synchronized package metadata and `hydra-umc.project.json`.\n\n'

@@ -29,3 +29,9 @@ hydra-umc-bridge-cnc = "hydra_umc_bridge_cnc.service:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff.lint]
+select = ["F", "E9", "B"]
+
+[tool.mypy]
+ignore_missing_imports = true
