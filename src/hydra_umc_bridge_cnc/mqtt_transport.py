@@ -62,6 +62,7 @@ from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open
 
 from .cell import CncCellBridge, CncSnapshot, spindle_gate_from_environment
 from .controller import ControllerLink, GrblController
+from .global_stop import GlobalStopGuard, GlobalStopSettings, follow_on_connect
 from .mtconnect_publish import DEFAULT_DEVICE, observations_payload
 from .serial_transport import SerialLike
 
@@ -75,6 +76,10 @@ MAX_PAYLOAD_BYTES = 16 * 1024
 
 # Handled on their own lane: a stop must never wait behind a status query.
 STOP_VERBS = frozenset({"cmd/feed_hold", "cmd/soft_reset"})
+
+# Refused while the server announces a global stop (when the bridge follows it): a resume moves the machine, a job asks for work (an abort is let through).
+MOVING_VERBS = frozenset({"cmd/cycle_start_resume"})
+GLOBAL_STOP_ENVIRONMENT_NAME = "CNC"
 
 _LOG = logging.getLogger(__name__)
 
@@ -150,12 +155,14 @@ class CncMqttBridge:
         spindle_gate: str | None = None,
         mtconnect: bool | None = None,
         mtconnect_device: str = DEFAULT_DEVICE,
+        global_stop: GlobalStopGuard | GlobalStopSettings | None = None,
     ) -> None:
         """``connection`` is the GRBL serial port; pass ``controller`` instead (a ``LinuxcncController``, a ``CncjsController``)
         for a machine that is not a GRBL board on a port of its own. ``spindle_gate`` is the mode of the spindle gate for the
         phases in which an arm reaches into the machine (see ``CncCellBridge``); when it is not given, it is read from
         ``HYDRA_UMC_CNC_SPINDLE_GATE`` (default ``when_known``). ``mtconnect`` switches on the retained MTConnect observations
-        topic; when it is not given, it follows ``HYDRA_UMC_CNC_MTCONNECT=1`` (default off)."""
+        topic; when it is not given, it follows ``HYDRA_UMC_CNC_MTCONNECT=1`` (default off). ``global_stop`` makes the bridge follow the global stop announced by the server (see
+        ``global_stop.py``); when it is not given it follows ``HYDRA_UMC_CNC_GLOBAL_STOP=1`` (default off: nothing changes)."""
 
         if controller is None:
             if connection is None:
@@ -176,6 +183,12 @@ class CncMqttBridge:
         self._gate = CncCellBridge(spindle_gate if spindle_gate is not None else spindle_gate_from_environment())
         self._mtconnect = mtconnect if mtconnect is not None else os.environ.get(MTCONNECT_ENVIRONMENT, "").strip() == "1"
         self._mtconnect_device = mtconnect_device
+        if isinstance(global_stop, GlobalStopGuard):
+            self.global_stop = global_stop
+        elif global_stop is not None:
+            self.global_stop = GlobalStopGuard(global_stop)
+        else:
+            self.global_stop = GlobalStopGuard.from_environment(GLOBAL_STOP_ENVIRONMENT_NAME)
 
     def refresh_status(self) -> CncSnapshot:
         """Query real GRBL status now.
@@ -244,6 +257,9 @@ class CncMqttBridge:
         suffix = topic[len(TOPIC_PREFIX) :]
         if len(payload) > MAX_PAYLOAD_BYTES:
             return _refusal(suffix, f"payload is larger than {MAX_PAYLOAD_BYTES} bytes")
+        refused = self.global_stop.refusal(suffix, payload, moving=MOVING_VERBS)
+        if refused is not None:
+            return _refusal(suffix, refused)
         try:
             return self._dispatch(suffix, payload)
         except Exception as error:  # noqa: BLE001 - nothing a message does may end the loop
@@ -354,6 +370,16 @@ class MessageDispatcher(SharedMessageDispatcher):
 
     def __init__(self, bridge: object, stop_verbs: frozenset[str] = STOP_VERBS) -> None:
         super().__init__(bridge, TOPIC_PREFIX, stop_verbs)  # type: ignore[arg-type]
+        guard = getattr(bridge, "global_stop", None)
+        self._global_stop = guard if isinstance(guard, GlobalStopGuard) else None
+
+    def on_message(self, client: object, userdata: object, message: object) -> None:
+        # the announcement of the global stop is retained: it is the state, not a replay, so it is read before the retained check of the shared dispatcher
+        guard = self._global_stop
+        if guard is not None and guard.enabled and getattr(message, "topic", None) == guard.topic:
+            guard.observe(bytes(message.payload))  # type: ignore[attr-defined]
+            return
+        super().on_message(client, userdata, message)
 
 
 def run_forever(
@@ -392,6 +418,7 @@ def run_forever(
         raise ValueError("password was given without a username - MQTT credentials need both")
 
     dispatcher = MessageDispatcher(bridge)
+    guard = getattr(bridge, "global_stop", None)  # a bridge object that is not one of ours has none: nothing to follow
     try:
         client = open_bridge_client(
             host,
@@ -403,6 +430,7 @@ def run_forever(
             password=password,
             max_connect_attempts=max_connect_attempts,
             connect_retry_delay_seconds=connect_retry_delay_seconds,
+            on_connected=follow_on_connect(guard) if isinstance(guard, GlobalStopGuard) else None,
         )
         client.loop_forever()  # type: ignore[attr-defined]
     finally:

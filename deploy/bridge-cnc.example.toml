@@ -67,3 +67,11 @@ enabled = false
 # Keep the idempotency keys in a file so that a restarted bridge refuses a job it already handled.
 [idempotency]
 path = "/var/lib/hydra-umc-bridge-cnc/idempotency.sqlite"
+
+# Follow the global stop that the server announces on <mqtt prefix>/safety/estop. Off by default: nothing changes.
+#   enabled: while the last announcement says SAFE_STOP (or cannot be read) a resume and a job are refused; READY ends it
+#   strict:  also refuse until the first announcement has been heard
+[global_stop]
+enabled = false
+topic = "hydra/swarm/safety/estop"
+strict = false

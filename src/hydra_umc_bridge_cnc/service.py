@@ -38,6 +38,7 @@ from typing import Callable, Sequence
 from hydra_umc_sdk.bridge_contract import CellState
 
 from .cell import SPINDLE_GATE_MODES, SPINDLE_GATE_WHEN_KNOWN
+from .global_stop import DEFAULT_TOPIC, GlobalStopSettings
 from .multiplexer import DEFAULT_HOST, DEFAULT_PORT, PortSharingConfig
 
 CONFIG_ENVIRONMENT = "HYDRA_UMC_BRIDGE_CNC_CONFIG"
@@ -107,6 +108,7 @@ class ServiceConfig:
     spindle_gate: str = SPINDLE_GATE_WHEN_KNOWN
     mtconnect: bool = False
     idempotency_path: str | None = None
+    global_stop: GlobalStopSettings = field(default_factory=GlobalStopSettings)
 
 
 def _table(parent: dict, key: str) -> dict:
@@ -168,7 +170,7 @@ def _signal(parent: dict, name: str, levels: tuple[str, str]) -> SignalConfig:
 def parse_config(data: dict) -> ServiceConfig:
     """Turn the parsed TOML into the configuration, refusing what is unknown or wrong."""
 
-    _only(data, {"mqtt", "controller", "estop", "door", "port_sharing", "cell_state", "gate", "mtconnect", "idempotency"}, "the file")
+    _only(data, {"mqtt", "controller", "estop", "door", "port_sharing", "cell_state", "gate", "mtconnect", "idempotency", "global_stop"}, "the file")
     mqtt_table = _table(data, "mqtt")
     _only(mqtt_table, {"host", "port", "client_id", "max_connect_attempts", "connect_retry_delay_seconds"}, "mqtt")
     d = MqttSettings()
@@ -238,6 +240,16 @@ def parse_config(data: dict) -> ServiceConfig:
     _only(mt_table, {"enabled"}, "mtconnect")
     idem = _table(data, "idempotency")
     _only(idem, {"path"}, "idempotency")
+    stop_table = _table(data, "global_stop")
+    _only(stop_table, {"enabled", "topic", "strict"}, "global_stop")
+    try:
+        global_stop = GlobalStopSettings(
+            _kind(stop_table, "enabled", bool, "global_stop", False),
+            _kind(stop_table, "topic", str, "global_stop", DEFAULT_TOPIC),
+            _kind(stop_table, "strict", bool, "global_stop", False),
+        )
+    except ValueError as error:
+        raise ConfigError(f"global_stop.topic: {error}") from error
     return ServiceConfig(
         _signal(data, "estop", ("the E-STOP is pressed", "")),
         _signal(data, "door", ("the door is open", "")),
@@ -248,6 +260,7 @@ def parse_config(data: dict) -> ServiceConfig:
         spindle,
         _kind(mt_table, "enabled", bool, "mtconnect", False),
         _kind(idem, "path", str, "idempotency"),
+        global_stop,
     )
 
 
@@ -403,6 +416,7 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
         controller=controller,
         spindle_gate=config.spindle_gate,
         mtconnect=config.mtconnect,
+        global_stop=config.global_stop,
     )
     return bridge, closers
 

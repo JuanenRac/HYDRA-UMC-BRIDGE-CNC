@@ -70,6 +70,20 @@ The current parser accepts generic controller-state evidence, the leading state 
 
 Add the standard header, explain the safe scope, number console steps and use `pause` in `.bat`. Place parsing logic under test, compile `tools/` in the build check and document every command. No script may emit G-code or change HAL state as a side effect; the serial link is opened only by the bridge's own transport, never by a helper script.
 
+## Following the global stop
+
+The server can announce a global stop on `<mqtt prefix>/safety/estop` (a retained `SafetyState` message: `SAFE_STOP`, later `READY`; the contract is `docs/GLOBAL_STOP.md` of HYDRA-UMC-SERVER). This bridge can follow it. It is off by default and then behaves exactly as before: it does not even subscribe to the topic.
+
+| Switch | Default | Meaning |
+|---|---|---|
+| `HYDRA_UMC_CNC_GLOBAL_STOP` | off | `1` makes the bridge subscribe to the announcement (QoS 1, again after every reconnect) |
+| `HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` | `hydra/swarm/safety/estop` | the topic, when the MQTT prefix of the server is not the default one |
+| `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT` | off | `1` also refuses before the first announcement has been heard |
+
+In the configuration file of the service the same three switches are the table `[global_stop]` (`enabled`, `topic`, `strict`; the example file shows it switched off).
+
+While the last announcement says `SAFE_STOP`, says anything but `READY`, or cannot be read, the command handler of the bridge refuses `cmd/cycle_start_resume` and `cmd/job` (an abort job passes) with an answer that gives the reason (`global stop active (SAFE_STOP) - nothing moves until the server announces READY`); `cmd/feed_hold`, `cmd/soft_reset` and `cmd/status` keep working. Only a `READY` message ends it. The announcement is read although it is retained: it is the state, not a replayed command. When the broker is lost the bridge keeps the last state it heard; a bridge that has not heard the topic yet is left as it was, unless `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT` is on. This is a refusal in software: the controller and the machine keep the last word, and the contract adds a stop, it never removes one. Tested against a real broker (`tests/test_global_stop_broker.py`); never run with the real server.
+
 ## Hardware acceptance gate
 
 Identify the controller and interface, bind evidence to that controller, validate E-STOP/door signals independently, test stale/offline behavior, conduct dry auxiliary-cell trials and complete HIL before relying on the command path (feed hold, soft reset, cycle start/resume) that already exists. The native CNC controller remains authoritative.
