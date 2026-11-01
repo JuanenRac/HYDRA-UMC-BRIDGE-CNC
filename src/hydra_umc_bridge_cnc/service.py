@@ -451,11 +451,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ConfigError as error:
         print(f"hydra-umc-bridge-cnc: configuration error: {error}", file=sys.stderr)
         return 2
+    # The limits of the MQTT transport come from the file or, without a [hardening] table, from the environment of the service. A limit that is
+    # misspelt must not be taken for no limit: it stops the start here, naming the variable, before anything is opened (and `--check` says so too).
+    from hydra_umc_sdk.bridge_transport import hardening_from_environment
+
+    from .mqtt_transport import GLOBAL_STOP_ENVIRONMENT_NAME, run_forever
+
+    hardening = config.hardening
+    if hardening is None:
+        try:
+            hardening = hardening_from_environment(GLOBAL_STOP_ENVIRONMENT_NAME)
+        except ValueError as error:
+            print(f"hydra-umc-bridge-cnc: configuration error: {error}", file=sys.stderr)
+            return 2
     if args.check:
         print(f"CONFIG=PASS {args.config}")
         return 0
-
-    from .mqtt_transport import run_forever
 
     try:
         bridge, closers = build_bridge(config)
@@ -472,7 +483,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             mqtt.client_id,
             max_connect_attempts=mqtt.max_connect_attempts,
             connect_retry_delay_seconds=mqtt.connect_retry_delay_seconds,
-            hardening=config.hardening,
+            hardening=hardening,
         )
     except Exception:  # noqa: BLE001
         _LOG.exception("the bridge stopped")

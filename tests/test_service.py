@@ -279,5 +279,56 @@ class HardeningTableTests(unittest.TestCase):
         self.assertIn("enabled = false", text.split("[hardening]", 1)[1])
 
 
+class HardeningFromTheEnvironmentTests(unittest.TestCase):
+    """A limit that is misspelt in the environment stops the start with a clear message, before anything is opened."""
+
+    PREFIX = "HYDRA_UMC_CNC_"
+
+    def run_main(self, env, *extra):
+        import contextlib
+        import io
+        import re
+        import tempfile
+        from unittest import mock
+
+        # the example file with its [hardening] table taken out: without the table the environment of the service decides
+        text = re.sub(r"(?ms)^\[hardening\]\n.*?(?=^\[|\Z)", "", EXAMPLE.read_text(encoding="utf-8").replace("\r\n", "\n"))
+        self.assertNotIn("[hardening]", text)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        config_path = Path(folder.name) / "bridge.toml"
+        config_path.write_text(text, encoding="utf-8")
+        out, err = io.StringIO(), io.StringIO()
+        opened = []
+        clean = {k: v for k, v in os.environ.items() if not k.startswith(self.PREFIX)}
+        with mock.patch.dict(os.environ, clean, clear=True), mock.patch.dict(os.environ, env):
+            with mock.patch("hydra_umc_bridge_cnc.service.build_bridge", side_effect=lambda *a, **k: opened.append(1)):
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    code = main(["--config", str(config_path), *extra])
+        return code, out.getvalue(), err.getvalue(), opened
+
+    def test_a_limit_that_is_not_a_number_stops_the_start_naming_the_variable(self):
+        for name, value in (("MAX_QUEUE", "many"), ("CONNECT_JITTER", "x"), ("MAX_PAYLOAD_BYTES", "1k"), ("CONNECT_BACKOFF_FACTOR", "twice")):
+            with self.subTest(name=name):
+                code, out, err, opened = self.run_main({self.PREFIX + "HARDENED": "1", self.PREFIX + name: value})
+                self.assertEqual(code, 2)
+                self.assertIn("configuration error", err)
+                self.assertIn(self.PREFIX, err)
+                self.assertEqual(opened, [], "nothing was opened before the problem was reported")
+                self.assertNotIn("CONFIG=PASS", out)
+
+    def test_the_check_says_so_too(self):
+        code, out, err, _ = self.run_main({self.PREFIX + "HARDENED": "1", self.PREFIX + "MAX_QUEUE": "many"}, "--check")
+        self.assertEqual(code, 2)
+        self.assertIn(self.PREFIX + "MAX_QUEUE", err)
+        self.assertNotIn("CONFIG=PASS", out)
+
+    def test_a_wrong_value_is_not_read_while_the_switch_is_off_and_the_check_passes_with_good_ones(self):
+        code, out, _, _ = self.run_main({self.PREFIX + "MAX_QUEUE": "many"}, "--check")
+        self.assertEqual((code, "CONFIG=PASS" in out), (0, True))
+        code, out, _, _ = self.run_main({self.PREFIX + "HARDENED": "1", self.PREFIX + "MAX_QUEUE": "8"}, "--check")
+        self.assertEqual((code, "CONFIG=PASS" in out), (0, True))
+
+
 if __name__ == "__main__":
     unittest.main()
