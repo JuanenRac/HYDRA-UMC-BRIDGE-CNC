@@ -38,7 +38,8 @@ from typing import Callable, Sequence
 from hydra_umc_sdk.bridge_contract import CellState
 
 from .cell import SPINDLE_GATE_MODES, SPINDLE_GATE_WHEN_KNOWN
-from .global_stop import DEFAULT_TOPIC, GlobalStopSettings
+from hydra_umc_sdk.bridge_transport import BridgeHardening
+from hydra_umc_sdk.global_stop import DEFAULT_TOPIC, GlobalStopSettings
 from .multiplexer import DEFAULT_HOST, DEFAULT_PORT, PortSharingConfig
 
 CONFIG_ENVIRONMENT = "HYDRA_UMC_BRIDGE_CNC_CONFIG"
@@ -109,6 +110,7 @@ class ServiceConfig:
     mtconnect: bool = False
     idempotency_path: str | None = None
     global_stop: GlobalStopSettings = field(default_factory=GlobalStopSettings)
+    hardening: BridgeHardening | None = None    # the [hardening] table; None: the environment of the service decides
 
 
 def _table(parent: dict, key: str) -> dict:
@@ -170,7 +172,7 @@ def _signal(parent: dict, name: str, levels: tuple[str, str]) -> SignalConfig:
 def parse_config(data: dict) -> ServiceConfig:
     """Turn the parsed TOML into the configuration, refusing what is unknown or wrong."""
 
-    _only(data, {"mqtt", "controller", "estop", "door", "port_sharing", "cell_state", "gate", "mtconnect", "idempotency", "global_stop"}, "the file")
+    _only(data, {"mqtt", "controller", "estop", "door", "port_sharing", "cell_state", "gate", "mtconnect", "idempotency", "global_stop", "hardening"}, "the file")
     mqtt_table = _table(data, "mqtt")
     _only(mqtt_table, {"host", "port", "client_id", "max_connect_attempts", "connect_retry_delay_seconds"}, "mqtt")
     d = MqttSettings()
@@ -250,6 +252,22 @@ def parse_config(data: dict) -> ServiceConfig:
         )
     except ValueError as error:
         raise ConfigError(f"global_stop.topic: {error}") from error
+    hardening_table = _table(data, "hardening")
+    _only(hardening_table, {"enabled", "max_queue", "max_payload_bytes", "connect_backoff_factor", "connect_max_delay_seconds", "connect_jitter"}, "hardening")
+    hardening = None
+    if hardening_table:    # no table: the environment of the service decides (and, with nothing set there, nothing is limited)
+        hardening_defaults = BridgeHardening(enabled=True)
+        try:
+            hardening = BridgeHardening(
+                _kind(hardening_table, "enabled", bool, "hardening", False),
+                _kind(hardening_table, "max_queue", int, "hardening", hardening_defaults.max_queue),
+                _kind(hardening_table, "max_payload_bytes", int, "hardening"),
+                _kind(hardening_table, "connect_backoff_factor", float, "hardening", hardening_defaults.connect_backoff_factor),
+                _kind(hardening_table, "connect_max_delay_seconds", float, "hardening", hardening_defaults.connect_max_delay_seconds),
+                _kind(hardening_table, "connect_jitter", float, "hardening", hardening_defaults.connect_jitter),
+            )
+        except ValueError as error:
+            raise ConfigError(f"hardening: {error}") from error
     return ServiceConfig(
         _signal(data, "estop", ("the E-STOP is pressed", "")),
         _signal(data, "door", ("the door is open", "")),
@@ -261,6 +279,7 @@ def parse_config(data: dict) -> ServiceConfig:
         _kind(mt_table, "enabled", bool, "mtconnect", False),
         _kind(idem, "path", str, "idempotency"),
         global_stop,
+        hardening,
     )
 
 
@@ -453,6 +472,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             mqtt.client_id,
             max_connect_attempts=mqtt.max_connect_attempts,
             connect_retry_delay_seconds=mqtt.connect_retry_delay_seconds,
+            hardening=config.hardening,
         )
     except Exception:  # noqa: BLE001
         _LOG.exception("the bridge stopped")

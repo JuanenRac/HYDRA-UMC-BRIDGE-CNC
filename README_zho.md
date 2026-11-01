@@ -208,6 +208,7 @@ run_forever(bridge, host="192.168.0.180")   # connects to the broker and serves 
 | `test_grbl_emulator.py`, `grbl_emulator.py` | 17 | 针对手写、忠实于协议的 GRBL v1.1 模拟器的桥接 |
 | `test_hardening.py`, `test_edge_cases.py`, `test_idempotency.py`, `test_observation.py` | 25 + 20 + 3 + 7 | 对齐的状态答复、断线、进给保持确认、恶意负载、重复键、缺失证据 |
 | `test_global_stop.py`, `test_global_stop_broker.py` | 17 + 5 | 全局停止的守卫及其附带原因的拒绝，以及在空闲本地端口上对真实代理的同样测试（QoS 0、1、2 的通告，连接时遵从保留的停止，无法读取的通告按故障关闭处理） |
+| `test_transport_limits.py` | - | MQTT 传输的限制（丢弃最旧等待指令的有界队列、从不作用于停止动词的负载上限、首次连接时带抖动的指数退避），以及取自共享 SDK 而非副本的全局停止守卫；除非设置开启，否则这些限制处于关闭状态 |
 | `test_broker_integration.py`, `broker_harness.py` | 7 | 在空闲本地端口上对真实 HYDRA-UMC-MQTT-BROKER 的 MQTT 客户端测试：通过客户端下发的指令、保留状态与遗嘱，以及代理掉线再恢复后的回路；缺少 Node.js、`paho-mqtt` 或已安装的代理（`HYDRA_UMC_TEST_BROKER_DIR`，默认是相邻文件夹）时会自动跳过 |
 | `test_result_qos.py` | 4 | 对命令的每个应答都以 QoS 1 发布（`cmd/<verb>/result`），也在真实代理上测试 |
 

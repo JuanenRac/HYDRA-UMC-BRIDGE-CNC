@@ -252,5 +252,32 @@ class WiringTests(unittest.TestCase):
         self.assertIn("estop", self.ask(bridge, "cmd/status")[0])
 
 
+class HardeningTableTests(unittest.TestCase):
+    """The [hardening] table of the configuration file: absent means the environment decides; present, it is read strictly."""
+
+    def test_no_table_leaves_the_decision_to_the_environment(self):
+        self.assertIsNone(parse_config(MINIMAL).hardening)
+
+    def test_the_table_is_read_with_the_defaults_of_the_sdk_for_what_it_leaves_out(self):
+        config = parse_config(with_(hardening={"enabled": True, "max_queue": 12, "max_payload_bytes": 4096}))
+        self.assertEqual(
+            (config.hardening.enabled, config.hardening.max_queue, config.hardening.max_payload_bytes, config.hardening.connect_backoff_factor),
+            (True, 12, 4096, 2.0),
+        )
+
+    def test_a_table_that_does_not_say_enabled_is_off(self):
+        self.assertFalse(parse_config(with_(hardening={"max_queue": 12})).hardening.enabled)
+
+    def test_an_unknown_key_a_wrong_type_and_a_value_out_of_range_are_refused(self):
+        for table in ({"max_queu": 3}, {"enabled": "yes"}, {"max_queue": True}, {"max_queue": 0}, {"connect_jitter": 5}, {"connect_backoff_factor": "2"}, {"max_payload_bytes": 0}):
+            with self.subTest(table=table), self.assertRaises(ConfigError):
+                parse_config(with_(hardening=table))
+
+    def test_the_example_file_documents_the_table_and_keeps_it_off(self):
+        text = EXAMPLE.read_text(encoding="utf-8")
+        self.assertIn("[hardening]", text)
+        self.assertIn("enabled = false", text.split("[hardening]", 1)[1])
+
+
 if __name__ == "__main__":
     unittest.main()

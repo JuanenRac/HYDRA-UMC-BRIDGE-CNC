@@ -13,7 +13,7 @@ from unittest import mock
 from hydra_umc_sdk.bridge_contract import BridgeJob, CellState, JobPhase, MachineState, job_to_dict
 
 from hydra_umc_bridge_cnc import CncMqttBridge
-from hydra_umc_bridge_cnc.global_stop import DEFAULT_TOPIC, GlobalStopGuard, GlobalStopSettings, settings_from_environment
+from hydra_umc_sdk.global_stop import DEFAULT_TOPIC, GlobalStopGuard, GlobalStopSettings, settings_from_environment
 from hydra_umc_bridge_cnc.mqtt_transport import TOPIC_PREFIX, MessageDispatcher
 
 SAFE_STOP = json.dumps({"schema_version": "1.0", "state": "SAFE_STOP", "source": "hydra-umc-server"}).encode()

@@ -75,3 +75,15 @@ path = "/var/lib/hydra-umc-bridge-cnc/idempotency.sqlite"
 enabled = false
 topic = "hydra/swarm/safety/estop"
 strict = false
+
+# The limits of the MQTT transport. All off by default: with this table absent (or "enabled = false") the bridge behaves exactly as before. When it is on:
+#   max_queue:                 the most commands that may wait behind the running one (the OLDEST waiting one is dropped and counted; a stop is never held back)
+#   max_payload_bytes:         a payload bigger than this is refused before it is queued (omit it to keep the bridge's own cap)
+#   connect_backoff_factor, connect_max_delay_seconds, connect_jitter: an exponential wait with jitter between the retries of the first connect
+# A table that is present but wrong stops the service at start, naming the key. Without this table the environment of the service can switch it on (HYDRA_UMC_CNC_HARDENED=1).
+[hardening]
+enabled = false
+max_queue = 64
+connect_backoff_factor = 2.0
+connect_max_delay_seconds = 30.0
+connect_jitter = 0.25
