@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
+
 ## [0.2.5] - A limit that is misspelt in the environment stops the start with a clear message, the global stop guard comes from the shared SDK and the MQTT transport has optional limits
 
 - **A limit that is misspelt in the environment stops the start with a clear message:** without a `[hardening]` table the service reads `HYDRA_UMC_CNC_HARDENED` and the limits that go with it; a value that is not a number now ends the start (and `--check`) with `configuration error: HYDRA_UMC_CNC_...` and exit status 2, before the controller or the broker is opened, instead of a traceback in the log of a service that restarts. With the switch off the other variables are not read.
