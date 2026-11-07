@@ -21,6 +21,7 @@ The example settings in `deploy/` show the configuration the service reads; the 
 | File | What it exercises |
 |------|-------------------|
 | `tests/test_grbl_emulator.py` | the emulator and the bridge against it: status vocabulary, real-time bytes and injected faults |
+| `tests/test_job_session_scenarios.py` | a whole job session over the topics: hold and resume, the door during a hold, a latched alarm through a soft reset and its unlock, a repeated job key and a retained command |
 | `tests/test_serial_pty.py` | the real serial code over a pseudo-terminal pair (needs `pyserial`) |
 | `tests/test_serial_transport.py` | status query and real-time control bytes over the serial seam; fail-closed on every failure |
 | `tests/test_controllers.py` | the GRBL, LinuxCNC and CNCjs links against their in-memory simulations |

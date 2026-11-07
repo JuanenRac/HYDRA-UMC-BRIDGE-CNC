@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A whole job session over the topics against the GRBL emulator:** `tests/test_job_session_scenarios.py` sends the status, job, feed hold and resume topics to the real bridge while the emulated controller runs, holds, has its safety door opened and closed, latches an alarm that survives a soft reset and is unlocked, and checks that a retained command is never executed. Simulator evidence only; no real GRBL board was involved.
 ## [0.2.6] - A visible simulation bench: the workflow "Simulation bench" runs the emulators and fakes of the bridge without hardware on every push, by hand and once a week; docs/SIMULATION.md says what it exercises and what it cannot show. (and 1 more changes)
 
 - **A visible simulation bench:** the workflow "Simulation bench" runs the emulators and fakes of the bridge without hardware on every push, by hand and once a week; `docs/SIMULATION.md` says what it exercises and what it cannot show.
