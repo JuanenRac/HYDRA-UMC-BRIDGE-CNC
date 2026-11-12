@@ -1,0 +1,9 @@
+[
+  {
+    "stack": "python",
+    "floor": 94,
+    "source": "src/hydra_umc_bridge_cnc",
+    "tests": "tests",
+    "pythonpath": "src"
+  }
+]

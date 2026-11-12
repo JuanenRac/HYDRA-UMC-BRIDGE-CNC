@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The tests have a coverage floor of 94 %:** `tools/coverage_floor.json` holds the measured line and branch coverage of the bridge, rounded down (94.3 % measured in the CI environment), and `python tools/hydra_project_tool.py coverage` warns when it falls below it (a warning, not a CI check). Tooling only: no behaviour changes.
 - **The run loop of the service and the GPIO reader of the safety lines are tested:** `tests/test_service_run_and_gpio.py` (10 tests) checks the exit codes (a bridge that cannot be built or a port that cannot be reached is 3, a missing file is 2, a loop that ends or raises is 1 so the service manager restarts it), that the closers all run even when one fails, that the loop gets the broker settings of the file, and, against a fake `gpiod`, that an unsafe-high line gets a pull-up and an unsafe-low line a pull-down so a cut wire reads as unsafe, with the debounce of the file, and that a missing library stops the start with a clear message. Line coverage of `service.py` goes from 86 % to 95 % and of the bridge from 92 % to 95 %.
 
 - **A whole job session over the topics against the GRBL emulator:** `tests/test_job_session_scenarios.py` sends the status, job, feed hold and resume topics to the real bridge while the emulated controller runs, holds, has its safety door opened and closed, latches an alarm that survives a soft reset and is unlocked, and checks that a retained command is never executed. Simulator evidence only; no real GRBL board was involved.
