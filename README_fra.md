@@ -84,6 +84,8 @@ Chaque bridge parle le contrat de sécurité partagé de `HYDRA-UMC-SDK` : un tr
 | LinuxCNC | module Python `linuxcnc` | lit `linuxcnc.stat` ; n'envoie que pause, abandon et reprise |
 | CNCjs | socket.io | écoute `controller:state` ; n'envoie que `feedhold`, `reset`, `cyclestart` |
 
+> **Plateforme :** là où ce README dit CM5, il s'agit du banc pilote qui fonctionne aujourd'hui ; la plateforme visée par HYDRA-UMC est un NVIDIA Jetson Orin NX 16 Go, une conception ni construite ni testée.
+
 ## 🏛️ Architecture
 
 <p align="center">

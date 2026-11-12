@@ -84,6 +84,8 @@ GPL-3.0-or-later - see LICENSE
 | LinuxCNC | Python モジュール `linuxcnc` | `linuxcnc.stat` を読み、一時停止・中止・再開だけを送ります |
 | CNCjs | socket.io | `controller:state` を購読し、`feedhold`・`reset`・`cyclestart` だけを送ります |
 
+> **プラットフォーム：** この README の「CM5」は、現在動作している試験用ベンチを指します。HYDRA-UMC の目標プラットフォームは NVIDIA Jetson Orin NX 16 GB ですが、これは製作も試験もされていない設計です。
+
 ## 🏛️ アーキテクチャ
 
 <p align="center">
