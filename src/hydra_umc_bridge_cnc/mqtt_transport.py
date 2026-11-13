@@ -64,6 +64,7 @@ from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open
 from .cell import CncCellBridge, CncSnapshot, spindle_gate_from_environment
 from .controller import ControllerLink, GrblController
 from hydra_umc_sdk.global_stop import GlobalStopGuard, GlobalStopSettings, follow_on_connect
+from .heartbeat import StateHeartbeat, interval_from_environment
 from .mtconnect_publish import DEFAULT_DEVICE, observations_payload
 from .serial_transport import SerialLike
 
@@ -397,6 +398,7 @@ def run_forever(
     username: str | None = None,
     password: str | None = None,
     hardening: BridgeHardening | None = None,
+    heartbeat_interval_s: float | None = None,
 ) -> None:
     """Connect to a real HYDRA-UMC-MQTT-BROKER and dispatch forever.
 
@@ -417,6 +419,8 @@ def run_forever(
 
     The bridge announces itself on `availability`: "online" once connected, and
     the broker publishes "offline" (the Last Will) if the connection is lost.
+
+    `heartbeat_interval_s` (default: `HYDRA_UMC_CNC_HEARTBEAT_S`, off when unset) publishes the state every that many seconds; see heartbeat.py.
     """
 
     if password is not None and username is None:
@@ -426,6 +430,8 @@ def run_forever(
     hardening = hardening if hardening is not None else hardening_from_environment(GLOBAL_STOP_ENVIRONMENT_NAME)
     dispatcher = MessageDispatcher(bridge, **hardening.dispatcher_kwargs())  # type: ignore[arg-type]  # the keywords are ints; the stop verbs stay the default
     guard = getattr(bridge, "global_stop", None)  # a bridge object that is not one of ours has none: nothing to follow
+    interval = heartbeat_interval_s if heartbeat_interval_s is not None else interval_from_environment()
+    heartbeat: StateHeartbeat | None = None
     try:
         client = open_bridge_client(
             host,
@@ -440,6 +446,15 @@ def run_forever(
             on_connected=follow_on_connect(guard) if isinstance(guard, GlobalStopGuard) else None,
             **hardening.connect_kwargs(),
         )
+        if interval > 0.0:
+            heartbeat = StateHeartbeat(
+                lambda: bridge.handle_message(f"{TOPIC_PREFIX}cmd/status", b""),
+                lambda publish: client.publish(publish.topic, publish.payload, qos=getattr(publish, "qos", 0), retain=publish.retain),  # type: ignore[attr-defined]
+                interval,
+            )
+            heartbeat.start()
         client.loop_forever()  # type: ignore[attr-defined]
     finally:
+        if heartbeat is not None:
+            heartbeat.stop()
         dispatcher.close(wait=False)
