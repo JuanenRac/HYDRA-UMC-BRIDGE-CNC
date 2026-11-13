@@ -84,6 +84,10 @@ In the configuration file of the service the same three switches are the table `
 
 While the last announcement says `SAFE_STOP`, says anything but `READY`, or cannot be read, the command handler of the bridge refuses `cmd/cycle_start_resume` and `cmd/job` (an abort job passes) with an answer that gives the reason (`global stop active (SAFE_STOP) - nothing moves until the server announces READY`); `cmd/feed_hold`, `cmd/soft_reset` and `cmd/status` keep working. Only a `READY` message ends it. The announcement is read although it is retained: it is the state, not a replayed command. When the broker is lost the bridge keeps the last state it heard; a bridge that has not heard the topic yet is left as it was, unless `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT` is on. This is a refusal in software: the controller and the machine keep the last word, and the contract adds a stop, it never removes one. Tested against a real broker (`tests/test_global_stop_broker.py`); never run with the real server.
 
+## Publishing the state on a timer
+
+The retained `state` carries `observed_at`, but nothing refreshes it between two commands. With `HYDRA_UMC_CNC_HEARTBEAT_S` set to a number of seconds (1 to 3600; unset, empty, zero, negative or not a number mean off, the default) the bridge reads its state that often and publishes it the same way `cmd/status` does, so a consumer can tell a live bridge from a stale retained message. The reading takes the same lock as a command, so it never interleaves with one. A reading that fails is logged and the next one is tried. Simulator and fake-client evidence only.
+
 ## Hardware acceptance gate
 
 Identify the controller and interface, bind evidence to that controller, validate E-STOP/door signals independently, test stale/offline behavior, conduct dry auxiliary-cell trials and complete HIL before relying on the command path (feed hold, soft reset, cycle start/resume) that already exists. The native CNC controller remains authoritative.
