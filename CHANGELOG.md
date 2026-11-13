@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The unit finds the Python SDK it imports:** the unit had only its own `src` on the `PYTHONPATH`, so a service that imports `hydra_umc_sdk` started and died with `ModuleNotFoundError` when the SDK was not installed system-wide. It now also lists `/opt/hydra-umc/sdk-python`, the folder where the installer of the operating system package puts the SDK. `tests/test_unit_sdk_path.py` (4 tests) fails when the code imports the SDK and the unit does not list the folder.
 - **A coverage job in CI:** the suite is run under coverage (lines and branches) on every push and the job fails below a floor that does not go down.
 - **The state of the cnc cell can be published on a timer, off by default:** with `HYDRA_UMC_CNC_HEARTBEAT_S` set to a number of seconds (1 to 3600) the bridge reads its state that often and publishes it like `cmd/status`, so `observed_at` of the retained state keeps moving between commands. A reading that fails is counted and logged, and the next one is tried. Unset, empty, zero or not a number mean off. The reading takes the same lock as every other one. Tested with fake clients; no controller or broker was involved.
 

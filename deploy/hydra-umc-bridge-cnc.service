@@ -17,7 +17,8 @@ User=hydra-umc-bridge-cnc
 Group=hydra-umc-bridge-cnc
 SupplementaryGroups=gpio dialout
 WorkingDirectory=/opt/hydra-umc/bridge-cnc
-Environment=PYTHONPATH=/opt/hydra-umc/bridge-cnc/src
+# The package of the SDK (hydra_umc_sdk) is put in /opt/hydra-umc/sdk-python by the installer of HYDRA-UMC-OS (provisioning/deploy_lib.sh: provide_sdk_python).
+Environment=PYTHONPATH=/opt/hydra-umc/bridge-cnc/src:/opt/hydra-umc/sdk-python
 Environment=HYDRA_UMC_BRIDGE_CNC_CONFIG=/etc/hydra-umc/bridge-cnc.toml
 EnvironmentFile=-/etc/hydra-umc/bridge-cnc.env
 ExecStartPre=/usr/bin/python3 -m hydra_umc_bridge_cnc --check
