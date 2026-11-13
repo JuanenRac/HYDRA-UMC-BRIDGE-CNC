@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A coverage job in CI:** the suite is run under coverage (lines and branches) on every push and the job fails below a floor that does not go down.
 - **The state of the cnc cell can be published on a timer, off by default:** with `HYDRA_UMC_CNC_HEARTBEAT_S` set to a number of seconds (1 to 3600) the bridge reads its state that often and publishes it like `cmd/status`, so `observed_at` of the retained state keeps moving between commands. A reading that fails is counted and logged, and the next one is tried. Unset, empty, zero or not a number mean off. The reading takes the same lock as every other one. Tested with fake clients; no controller or broker was involved.
 
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
