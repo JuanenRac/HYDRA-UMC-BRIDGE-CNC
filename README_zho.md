@@ -171,6 +171,7 @@ flowchart LR
 |---|---|---|
 | `HYDRA_UMC_CNC_SPINDLE_GATE` | `when_known` | `off`、`when_known` 或 `required`；未设置或未知值等同于 `when_known` |
 | `HYDRA_UMC_CNC_MTCONNECT` | 关闭 | `1` 会把 MTConnect 观测值发布到 `hydra/bridges/cnc/mtconnect` |
+| `HYDRA_UMC_CNC_IN_DOUBT_CONSULT` | 关闭 | `1` 时，对首次尝试未留下应答的重复任务键，不再直接拒绝，而是用控制器当前上报的状态作答；任务绝不会被再次执行 |
 | `HYDRA_UMC_CNC_GLOBAL_STOP` | 关闭 | `1` 跟随服务器的全局停止：只要保留主题 `hydra/swarm/safety/estop` 上最新的通知是 `SAFE_STOP`（或无法读取），桥接就会带原因拒绝：恢复和任务（中止放行）；只有 `READY` 才能解除。`HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` 可更改主题，`HYDRA_UMC_CNC_GLOBAL_STOP_STRICT=1` 会在收到第一条通知之前也拒绝 |
 | `HYDRA_MQTT_USERNAME` | 无 | MQTT 用户名；代理将其绑定到客户端 ID 前缀 |
 | `HYDRA_MQTT_PASSWORD` | 无 | 密码；只能与用户名一起使用 |
