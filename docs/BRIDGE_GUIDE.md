@@ -50,6 +50,12 @@ For the phases in which an arm reaches into the machine (`LOAD`, `UNLOAD`) an id
 
 A command whose payload is a JSON object may carry a `request_id` (a plain token of up to 64 characters: letters, digits, `.`, `_`, `:`, `-`). Every result the bridge publishes for that message, on `cmd/<verb>/result`, carries the same `request_id`, so a caller with several commands in flight can tell the answers apart. A repeated idempotency key still gets the answer that was stored for it, with the `request_id` of the new request. The state topics do not carry one.
 
+## A job whose first attempt left no answer
+
+A job key is handled once. When a key was claimed but no answer was stored (the bridge stopped between the claim and the answer), the repeat of that key is refused with "this idempotency_key was already handled" and the job is never run again. With `HYDRA_UMC_CNC_IN_DOUBT_CONSULT=1` (default off) the bridge instead reads the controller and answers the repeat with `in_doubt: true`, `machine_state`, `controller_state` and `forwarded: false`; the reading is stored under the key, so a further repeat gets the same answer. It is a reading, not a decision: the gate is not asked again, nothing is sent to the controller and `allowed` stays `false`. A controller that reports nothing leaves the repeat refused. Exercised against a scripted GRBL port only.
+
+The state word of every status report (`Idle`, `Run`, `Hold:0`, `Door:1`, `Alarm`...) is read by the table of the SDK (`hydra_umc_sdk.grbl_status`); this bridge adds `OFF` as a fault. An unknown word is `OFFLINE`.
+
 ## One serial port
 
 A GRBL controller has ONE serial port. While this bridge holds it open, no other sender (UGS, bCNC, CNCjs, LaserGRBL) can use it, and this bridge does not send programs. That means the machine can run a job only if something that shares the port - a multiplexer such as CNCjs or ser2net - sits between the bridge, the sender and the controller, or if the programs are started some other way while the bridge only observes. With the CNCjs link above, CNCjs keeps the port and the bridge observes and pauses beside it; without it, the bridge is not deployable as it stands on a machine that is also driven by a G-code sender.
