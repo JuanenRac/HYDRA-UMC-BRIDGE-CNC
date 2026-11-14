@@ -171,6 +171,7 @@ La biblioteca: `CncCellBridge`, `CncSnapshot`, `CncMqttBridge`, `spindle_gate_fr
 |---|---|---|
 | `HYDRA_UMC_CNC_SPINDLE_GATE` | `when_known` | `off`, `when_known` o `required`; sin definir o un valor desconocido equivale a `when_known` |
 | `HYDRA_UMC_CNC_MTCONNECT` | desactivado | `1` publica las observaciones MTConnect en `hydra/bridges/cnc/mtconnect` |
+| `HYDRA_UMC_CNC_IN_DOUBT_CONSULT` | desactivado | `1` responde a una clave de trabajo repetida cuyo primer intento no dejó respuesta con lo que el controlador informa ahora, en lugar de rechazarla; el trabajo nunca se ejecuta de nuevo |
 | `HYDRA_UMC_CNC_GLOBAL_STOP` | desactivado | `1` sigue la parada global del servidor: mientras el último anuncio del tema retenido `hydra/swarm/safety/estop` diga `SAFE_STOP` (o no se pueda leer), el bridge rechaza con un motivo: una reanudación y un trabajo (un aborto pasa); solo `READY` lo termina. `HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` cambia el tema y `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT=1` rechaza también hasta que llegue el primer anuncio |
 | `HYDRA_MQTT_USERNAME` | ninguno | El usuario MQTT; el broker lo liga a un prefijo de ID de cliente |
 | `HYDRA_MQTT_PASSWORD` | ninguno | La contraseña; solo vale junto con el usuario |

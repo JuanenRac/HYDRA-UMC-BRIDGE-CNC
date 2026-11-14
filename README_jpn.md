@@ -171,6 +171,7 @@ flowchart LR
 |---|---|---|
 | `HYDRA_UMC_CNC_SPINDLE_GATE` | `when_known` | `off`・`when_known`・`required` のいずれか。未設定や未知の値は `when_known` と同じです |
 | `HYDRA_UMC_CNC_MTCONNECT` | オフ | `1` で MTConnect の観測値を `hydra/bridges/cnc/mtconnect` に公開します |
+| `HYDRA_UMC_CNC_IN_DOUBT_CONSULT` | オフ | `1` にすると、最初の試行が応答を残さなかった再送のジョブキーを拒否せず、コントローラーが現在報告している状態で応答します。ジョブが再実行されることはありません |
 | `HYDRA_UMC_CNC_GLOBAL_STOP` | オフ | `1` でサーバーのグローバル停止に従います。保持トピック `hydra/swarm/safety/estop` の最新の通知が `SAFE_STOP`（または読み取れない）の間、ブリッジは理由を付けて次を拒否します：再開とジョブ（中止は通す）。解除は `READY` のみです。`HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` でトピックを変更でき、`HYDRA_UMC_CNC_GLOBAL_STOP_STRICT=1` は最初の通知が届くまでも拒否します |
 | `HYDRA_MQTT_USERNAME` | なし | MQTT のユーザー名。ブローカーはクライアント ID のプレフィックスに結び付けます |
 | `HYDRA_MQTT_PASSWORD` | なし | パスワード。ユーザー名と一緒にのみ有効です |
