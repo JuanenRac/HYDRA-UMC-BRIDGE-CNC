@@ -56,6 +56,7 @@ from dataclasses import asdict
 from typing import Callable
 
 from hydra_umc_sdk.bridge_contract import CellState, JobPhase, MachineState, decision_to_dict
+from hydra_umc_sdk.bridge_contract import BridgeJob
 from hydra_umc_sdk.job_intake import IdempotencyStore, JobIntake
 from hydra_umc_sdk.bridge_transport import MessageDispatcher as SharedMessageDispatcher
 from hydra_umc_sdk.bridge_transport import BridgeHardening, hardening_from_environment
@@ -72,6 +73,7 @@ TOPIC_PREFIX = "hydra/bridges/cnc/"
 AVAILABILITY_TOPIC = f"{TOPIC_PREFIX}availability"
 MTCONNECT_TOPIC = f"{TOPIC_PREFIX}mtconnect"
 MTCONNECT_ENVIRONMENT = "HYDRA_UMC_CNC_MTCONNECT"
+IN_DOUBT_CONSULT_ENVIRONMENT = "HYDRA_UMC_CNC_IN_DOUBT_CONSULT"
 
 # A command is a few hundred bytes; anything larger is not a command, and parsing it is how a hostile payload costs the bridge its memory or its stack.
 MAX_PAYLOAD_BYTES = 16 * 1024
@@ -161,13 +163,16 @@ class CncMqttBridge:
         mtconnect: bool | None = None,
         mtconnect_device: str = DEFAULT_DEVICE,
         global_stop: GlobalStopGuard | GlobalStopSettings | None = None,
+        in_doubt_consult: bool | None = None,
     ) -> None:
         """``connection`` is the GRBL serial port; pass ``controller`` instead (a ``LinuxcncController``, a ``CncjsController``)
         for a machine that is not a GRBL board on a port of its own. ``spindle_gate`` is the mode of the spindle gate for the
         phases in which an arm reaches into the machine (see ``CncCellBridge``); when it is not given, it is read from
         ``HYDRA_UMC_CNC_SPINDLE_GATE`` (default ``when_known``). ``mtconnect`` switches on the retained MTConnect observations
         topic; when it is not given, it follows ``HYDRA_UMC_CNC_MTCONNECT=1`` (default off). ``global_stop`` makes the bridge follow the global stop announced by the server (see
-        ``global_stop.py``); when it is not given it follows ``HYDRA_UMC_CNC_GLOBAL_STOP=1`` (default off: nothing changes)."""
+        ``global_stop.py``); when it is not given it follows ``HYDRA_UMC_CNC_GLOBAL_STOP=1`` (default off: nothing changes). ``in_doubt_consult`` makes a repeated job key whose first attempt left no
+        answer be answered with what the controller reports now instead of a plain refusal; when it is not given it follows
+        ``HYDRA_UMC_CNC_IN_DOUBT_CONSULT=1`` (default off). The job is never evaluated or sent again either way."""
 
         if controller is None:
             if connection is None:
@@ -176,7 +181,8 @@ class CncMqttBridge:
         # docs/BRIDGE_CONTRACT.md: the idempotency key of a job is handled once; a repeat gets the answer that was given, nothing is evaluated again
         self._idempotency = idempotency
         # what arrives as a job goes through the shared intake: a malformed one is refused and a repeated key is answered from the store
-        self._intake = JobIntake(idempotency)
+        consult = in_doubt_consult if in_doubt_consult is not None else os.environ.get(IN_DOUBT_CONSULT_ENVIRONMENT, "").strip() == "1"
+        self._intake = JobIntake(idempotency, in_doubt_policy="consult" if consult else "refuse", status_query=self._report_for_job_in_doubt)
         self._connection = connection
         self._estop = estop
         self._door_closed = door_closed
@@ -223,6 +229,25 @@ class CncMqttBridge:
 
         with self._status_lock:
             return self._controller.read_snapshot(estop=self._estop, door_closed=self._door_closed)
+
+    def _report_for_job_in_doubt(self, job: BridgeJob) -> str | None:
+        """What the controller says now about a job whose first attempt left no answer (the `status_query` of the shared intake).
+
+        It is a reading, not a decision: the job is not evaluated and nothing is sent. A controller that cannot be read gives no answer and the repeat is refused.
+        """
+        snapshot = self.refresh_status()
+        if not snapshot.controller_state:
+            return None  # the controller said nothing: there is nothing to report, the repeat stays refused
+        report = {
+            "allowed": False,
+            "mode": "gate-only",
+            "forwarded": False,
+            "in_doubt": True,
+            "reason": f"the first attempt of this job left no answer; the controller now reports {snapshot.machine_state().value} and the job is not evaluated again",
+            "machine_state": snapshot.machine_state().value,
+            "controller_state": snapshot.controller_state,
+        }
+        return json.dumps(report)
 
     def handle_message(self, topic: str, payload: bytes, *, retained: bool = False) -> list[MqttPublish]:
         """Route one inbound message and put the `request_id` the caller sent (a plain token in a JSON payload) into each result, so answers can be matched to requests."""
@@ -339,6 +364,8 @@ class CncMqttBridge:
         key = job.idempotency_key
         if intake.duplicate:
             stored = self._idempotency.recall(key) if self._idempotency is not None else None
+            if stored is None and intake.in_doubt:
+                stored = self._intake.resolve_in_doubt(job)
             fallback = {"allowed": False, "reason": "this idempotency_key was already handled"}
             return MqttPublish(result_topic, stored if stored is not None else json.dumps(fallback), qos=RESULT_QOS)
         try:

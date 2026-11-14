@@ -11,11 +11,15 @@ import os
 from dataclasses import dataclass
 
 from hydra_umc_sdk.bridge_contract import BridgeJob, CellState, GateDecision, JobPhase, MachineState, evaluate_job
+from hydra_umc_sdk.grbl_status import grbl_machine_state
 
 # A machine that is stopped and does not go on until an operator resets it (MTConnect STOPPED). It is its own state: it is not
 # IDLE (no work may start on it) and not HOLDING (it cannot be resumed). The state exists in the SDK from the release that adds
 # it; with an older SDK the bridge falls back to FAULT, which refuses everything a stopped machine refuses.
 STOPPED_STATE = getattr(MachineState, "STOPPED", MachineState.FAULT)
+
+# The words this bridge reads on top of the shared table of the SDK.
+CNC_EXTRA_STATES = {"OFF": MachineState.FAULT}
 
 # The phases in which a robot arm reaches into the machine (it loads or unloads a part): a spindle that is still turning,
 # or a feed that is still moving, is a hazard that an IDLE controller state alone does not rule out.
@@ -62,51 +66,9 @@ class CncSnapshot:
             return MachineState.SAFE_STOP
         if not isinstance(self.controller_state, str):
             return MachineState.OFFLINE
-        # Real GRBL v1.1 status reports append a numeric substate to Hold
-        # and Door (e.g. "Hold:0"/"Hold:1", "Door:0".."Door:3" - see
-        # github.com/gnea/grbl/wiki/Grbl-v1.1-Interface#---current-status),
-        # never bare "Hold"/"Door" - a real controller connected over the
-        # serial transport would always send the suffixed form, which the
-        # exact-match checks below would otherwise silently miss and fall
-        # through to OFFLINE. Splitting off the substate here is safe for
-        # every other token too, since none of them use a colon.
-        state = self.controller_state.upper().split(":")[0]
-        if state == "IDLE":
-            return MachineState.IDLE
-        # Real GRBL v1.1 status-report state tokens (researched against
-        # github.com/gnea/grbl/wiki/Grbl-v1.1-Interface): "Run"/"Jog"/
-        # "Home" are all real active-motion states, not just "Run" alone -
-        # a machine jogging or homing is exactly as busy as one running a
-        # program. "RUNNING" also stays accepted here as the already
-        # source-normalized token snapshot_from_mtconnect_execution()
-        # produces for MTConnect's ACTIVE/EXECUTING, not a raw GRBL token.
-        if state in {"RUN", "RUNNING", "JOG", "HOME"}:
-            return MachineState.RUNNING
-        # GRBL's real "Hold" state means execution is intentionally paused
-        # (feed hold), not actively running - collapsing it into RUNNING
-        # hid a real, distinct condition. HOLDING already exists in the
-        # shared SDK for exactly this; this does not change any dispatch
-        # decision (evaluate_job() only allows productive work on IDLE
-        # either way) but makes the reported state accurate, matching the
-        # same real print_stats.state=paused -> HOLDING fix already made
-        # in the sibling PRINTER3D bridge.
-        if state == "HOLD":
-            return MachineState.HOLDING
-        # Stopped until the operator resets it: neither ready (IDLE) nor a pause that can be resumed (HOLDING).
-        if state == "STOPPED":
-            return STOPPED_STATE
-        # GRBL's real "Alarm" state is its most safety-critical report - a
-        # limit-switch trip, lost position, or unresolved E-STOP - and was
-        # previously swallowed by the OFFLINE fallback below, indistinguishable
-        # from "controller not reporting". "Door" is GRBL's own real safety-
-        # interlock state; this bridge already has a separate door_closed
-        # input, so recognizing GRBL's own "Door" token too is a defensive,
-        # belt-and-suspenders second signal, not a replacement for it.
-        if state in {"FAULT", "ERROR", "OFF", "ALARM"}:
-            return MachineState.FAULT
-        if state == "DOOR":
-            return MachineState.SAFE_STOP
-        return MachineState.OFFLINE
+        # The state word of a GRBL v1.1 report (numeric substate dropped, case ignored, unknown is OFFLINE) is read by the table every bridge shares;
+        # OFF is the one word this bridge adds on top of it (a fault).
+        return grbl_machine_state(self.controller_state, CNC_EXTRA_STATES)
 
 
 class CncCellBridge:
