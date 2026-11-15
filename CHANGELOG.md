@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A test fixes the strict rule of the request id:** the bridge reads the `request_id` of a command with a full match, so an id with a line break at the end (which the SDK helper accepts) is not echoed in the answer. The behaviour is unchanged; the bridge keeps its own, stricter function on purpose.
 - **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
 - **A job whose first attempt left no answer can be looked up instead of refused, off by default:** with `HYDRA_UMC_CNC_IN_DOUBT_CONSULT=1` (or `in_doubt_consult=True`) a repeated idempotency key that was claimed but never answered (for example after a restart in the middle of a job) is answered with what the controller reports now (`in_doubt`, `machine_state`, `controller_state`, `forwarded: false`) through the `status_query` of the shared job intake. The job is never evaluated or sent again, the reading is stored so a further repeat gets the same answer, and a controller that says nothing leaves the repeat refused. Without the switch the repeat is refused exactly as before. Tested against a scripted GRBL port (`tests/test_in_doubt_and_grbl_status.py`, simulation only).
 
