@@ -204,19 +204,16 @@ class CncMqttBridge:
     def refresh_status(self) -> CncSnapshot:
         """Query real GRBL status now.
 
-        :
-        this used to cache its result in `self._last_snapshot` for
-        `cycle_start_resume`/`cmd/job` to reuse instead of querying again -
-        a real door/E-STOP change between two messages went unnoticed
-        until the next unrelated status poll happened to catch it.
-        Deliberately no caching at all anymore: every command that can
-        move the machine or start a job calls this fresh, immediately
-        before deciding, every time - removed the field entirely rather
-        than leaving unused dead state a future edit could be tempted to
-        read from again.
+        Deliberately no caching at all: a result kept for
+        `cycle_start_resume`/`cmd/job` to reuse instead of querying again
+        would let a real door/E-STOP change between two messages go
+        unnoticed until the next unrelated status poll happened to catch
+        it. Every command that can move the machine or start a job calls
+        this fresh, immediately before deciding, every time - there is no
+        snapshot field at all, so no unused dead state a future edit could
+        be tempted to read from.
 
-        (a deeper version of the same real gap above
-        already narrowed): the
+        The
         `self._estop`/`self._door_closed` callables are passed straight
         through to `query_status()` rather than called here - GRBL's own
         status query blocks on `readline()` for up to the connection's
@@ -315,15 +312,14 @@ class CncMqttBridge:
             result = self._controller.soft_reset()
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)), qos=RESULT_QOS)]
         if suffix == "cmd/cycle_start_resume":
-            # this used to reuse self._last_snapshot - whatever
-            # was last queried, possibly from a `cmd/status` poll seconds
-            # or minutes earlier - instead of re-reading the real,
-            # current door/E-STOP state right before authorizing a real
-            # motion command. Reproduced: door closed + no E-STOP at the
+            # The real, current door/E-STOP state is re-read right before
+            # authorizing a real motion command, never taken from whatever
+            # was last queried (possibly a `cmd/status` poll seconds or
+            # minutes earlier). Otherwise: door closed + no E-STOP at the
             # last poll, then the door opens and E-STOP activates, then
-            # `cycle_start_resume` arrives - the stale snapshot still said
-            # HOLDING (not FAULT), so the real b"~" byte was sent despite
-            # the CURRENT physical state being unsafe. Fixed: always
+            # `cycle_start_resume` arrives - a stale snapshot would still
+            # say HOLDING (not FAULT), so the real b"~" byte would be sent
+            # despite the CURRENT physical state being unsafe. So:
             # refresh_status() live, immediately before deciding - never
             # a cached read for a command that actually moves the machine.
             snapshot = self.refresh_status()

@@ -66,7 +66,7 @@ _READ_IDLE_SECONDS = 0.01
 
 @dataclass(frozen=True)
 class PortSharingConfig:
-    """How the port is shared. ``enabled`` False (the default) is the old behaviour: the bridge holds the port alone."""
+    """How the port is shared. ``enabled`` False (the default) means the bridge holds the port alone."""
 
     enabled: bool = False
     host: str = DEFAULT_HOST

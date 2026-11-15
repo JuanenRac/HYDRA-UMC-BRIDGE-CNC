@@ -100,8 +100,8 @@ class RealtimeCommandTests(unittest.TestCase):
         self.assertEqual(connection.written, [b"\x18"])
 
     def test_cycle_start_resume_always_queries_fresh_status_even_if_one_was_cached(self):
-        # regression: this used to reuse whatever refresh_status last saw
-        # instead of re-checking live - even after an explicit earlier
+        # regression: reusing whatever refresh_status last saw
+        # instead of re-checking live is wrong - even after an explicit earlier
         # refresh_status() call, handle_message() must still issue its OWN
         # real status query right before deciding.
         b, connection, _signals = bridge(b"<Hold:0|MPos:0,0,0>\n")
@@ -251,7 +251,7 @@ class RunForeverTests(unittest.TestCase):
 
     def test_configures_broker_credentials_when_given(self):
         # HYDRA-UMC-MQTT-BROKER's own MQTT_AUTH_JSON authentication
-        # is real but this bridge previously had no way at all to supply
+        # is real, so this bridge has to be able to supply
         # a username/password to reach a broker that requires it.
         try:
             import paho.mqtt.client as mqtt

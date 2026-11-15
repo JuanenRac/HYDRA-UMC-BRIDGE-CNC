@@ -32,7 +32,7 @@ class CncCellTests(unittest.TestCase):
     def test_real_grbl_jog_and_home_states_are_recognized_as_active_motion(self):
         # Real GRBL v1.1 status-report tokens (github.com/gnea/grbl/wiki/
         # Grbl-v1.1-Interface) - a machine jogging or homing is exactly as
-        # busy as one running a program; both were previously swallowed by
+        # busy as one running a program; neither may be swallowed by
         # the OFFLINE fallback, indistinguishable from "not reporting".
         for token in ("Jog", "Home"):
             with self.subTest(token=token):
