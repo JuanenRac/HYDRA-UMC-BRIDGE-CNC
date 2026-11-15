@@ -27,6 +27,12 @@ class RequestIdTests(unittest.TestCase):
         for bad in (b"", b"not json", b"[1]", b'{"request_id": 5}', b'{"request_id": ""}', b'{"request_id": "has space"}', b'{"request_id": "' + b"x" * 65 + b'"}', b'{"a": 1}'):
             self.assertIsNone(request_id_of(bad), bad)
 
+    def test_the_rule_is_a_full_match_so_a_final_line_feed_is_refused(self):
+        # Stricter than the request id of the SDK (`read_request_id` ends its pattern with `$` and accepts "r1\n"): this bridge never echoes a token with a line break.
+        self.assertEqual(request_id_of(json.dumps({"request_id": "r1"}).encode()), "r1")
+        for bad in ("r1\n", "r1\r\n", "\nr1", "r1\n\n", "r\n1"):
+            self.assertIsNone(request_id_of(json.dumps({"request_id": bad}).encode()), repr(bad))
+
     def test_adding_the_request_id_keeps_the_qos_and_retain_of_a_result(self):
         for qos in (0, 1, 2):
             out = with_request_id([MqttPublish(f"{TOPIC_PREFIX}cmd/status/result", '{"a": 1}', retain=True, qos=qos)], "req-9")
