@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
 - **A job whose first attempt left no answer can be looked up instead of refused, off by default:** with `HYDRA_UMC_CNC_IN_DOUBT_CONSULT=1` (or `in_doubt_consult=True`) a repeated idempotency key that was claimed but never answered (for example after a restart in the middle of a job) is answered with what the controller reports now (`in_doubt`, `machine_state`, `controller_state`, `forwarded: false`) through the `status_query` of the shared job intake. The job is never evaluated or sent again, the reading is stored so a further repeat gets the same answer, and a controller that says nothing leaves the repeat refused. Without the switch the repeat is refused exactly as before. Tested against a scripted GRBL port (`tests/test_in_doubt_and_grbl_status.py`, simulation only).
 
 - **The state word of a GRBL report is read by the table every bridge shares:** `CncSnapshot.machine_state()` now calls `hydra_umc_sdk.grbl_status.grbl_machine_state()` and adds only `OFF` (a fault) to it, so this bridge no longer keeps its own copy. Every word the bridge read before reads the same (the numeric substate is dropped, the case is ignored, an unknown word or a value that is not text is `OFFLINE`, only `Idle` allows work); the one difference is that `Paused` now reads as holding instead of offline, and neither allows work.
