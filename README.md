@@ -271,7 +271,8 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── cncjs_link.py              CNCjs link (feedhold, reset, cyclestart) and its simulation
 │   ├── multiplexer.py             serial port multiplexer: the bridge and a G-code sender share one GRBL port
 │   ├── mtconnect_publish.py       MTConnect observations and the read-only SHDR adapter
-│   └── mqtt_transport.py          MQTT command and status transport
+│   ├── mqtt_transport.py          MQTT command and status transport
+│   └── config_access.py           configuration file location and access check
 ├── tests/                         238 tests, with a hand-written GRBL emulator
 ├── deploy/                        systemd unit and example configuration
 ├── docs/                          bridge guide, evidence boundary
