@@ -1,5 +1,5 @@
 # =============================================================================
-# HYDRA-UMC-BRIDGE-CNC - Example configuration (copy to /etc/hydra-umc/bridge-cnc.toml)
+# HYDRA-UMC-BRIDGE-CNC - Example configuration (copy to /etc/hydra-umc-bridge-cnc/bridge-cnc.toml; systemd creates /etc/hydra-umc-bridge-cnc for the service, mode 0750)
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
