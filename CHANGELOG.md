@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+
+## [0.2.7]
+
 - **Comments describe what the code does, not what it used to do:** docstrings and notes in the source and the tests say the present behaviour and the reason for it. Comments only: no behaviour changes.
 - **A test fixes the strict rule of the request id:** the bridge reads the `request_id` of a command with a full match, so an id with a line break at the end (which the SDK helper accepts) is not echoed in the answer. The behaviour is unchanged; the bridge keeps its own, stricter function on purpose.
 - **The SDK pin and the shared tools are up to date:** the SDK dependency names the newest release tag, and the shared tools are the canonical copies again.
@@ -21,6 +24,9 @@ All notable changes to this project are documented here.
 - **The run loop of the service and the GPIO reader of the safety lines are tested:** `tests/test_service_run_and_gpio.py` (10 tests) checks the exit codes (a bridge that cannot be built or a port that cannot be reached is 3, a missing file is 2, a loop that ends or raises is 1 so the service manager restarts it), that the closers all run even when one fails, that the loop gets the broker settings of the file, and, against a fake `gpiod`, that an unsafe-high line gets a pull-up and an unsafe-low line a pull-down so a cut wire reads as unsafe, with the debounce of the file, and that a missing library stops the start with a clear message. Line coverage of `service.py` goes from 86 % to 95 % and of the bridge from 92 % to 95 %.
 
 - **A whole job session over the topics against the GRBL emulator:** `tests/test_job_session_scenarios.py` sends the status, job, feed hold and resume topics to the real bridge while the emulated controller runs, holds, has its safety door opened and closed, latches an alarm that survives a soft reset and is unlocked, and checks that a retained command is never executed. Simulator evidence only; no real GRBL board was involved.
+
+- Successful incremental build: synchronized package metadata and `hydra-umc.project.json`.
+
 ## [0.2.6] - A visible simulation bench: the workflow "Simulation bench" runs the emulators and fakes of the bridge without hardware on every push, by hand and once a week; docs/SIMULATION.md says what it exercises and what it cannot show. (and 1 more changes)
 
 - **A visible simulation bench:** the workflow "Simulation bench" runs the emulators and fakes of the bridge without hardware on every push, by hand and once a week; `docs/SIMULATION.md` says what it exercises and what it cannot show.
