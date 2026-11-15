@@ -7,10 +7,11 @@
 
 The service runs as its own account. The shared directory ``/etc/hydra-umc`` can only be entered by the group of the agent (mode 0750), so a configuration
 file kept there cannot be opened by this account: the service would not start, or would run without the file. The directory the unit names is therefore one
-that systemd creates for this service alone (``ConfigurationDirectory=``), and the shared directory is never touched. Three small helpers live here:
+that systemd creates for this service alone (``ConfigurationDirectory=``), and the shared directory is never touched. Four small helpers live here:
 
 * ``diagnose_access`` names the first directory the account cannot enter or the file it cannot read, for the message of a refusal;
 * ``migrate_legacy_config`` copies the file of the earlier place into the new directory once, never overwriting and never deleting the old one;
+* ``ensure_directory`` makes the directory of the service enterable by its account (mode 0750, group of the service);
 * ``check_access`` is the check an installer runs as the service account before it stops the running service.
 """
 
@@ -66,6 +67,19 @@ def migrate_legacy_config(legacy: str, target: str, group: str = "") -> str:
     if group:
         shutil.chown(destination, user="root", group=group)
     return "migrated"
+
+
+def ensure_directory(directory: str, group: str = "") -> str:
+    """Make the directory of the service (and only that one) mode 0750, owned by root with the group of the service when it exists, so the account of
+    the service can enter it whichever way systemd created it. Run as root by ``--prepare-config``. The shared ``/etc/hydra-umc`` is refused."""
+    path = Path(directory)
+    if path.name == "hydra-umc":
+        raise ValueError(f"{directory} is the shared directory: it is never changed")
+    path.mkdir(parents=True, exist_ok=True)
+    os.chmod(path, 0o750)
+    if group:
+        shutil.chown(path, user="root", group=group)
+    return "ready"
 
 
 def group_exists(name: str) -> bool:

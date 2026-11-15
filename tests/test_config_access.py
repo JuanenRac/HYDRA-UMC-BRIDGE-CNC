@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest import mock
 
 from hydra_umc_bridge_cnc import config_access
-from hydra_umc_bridge_cnc.config_access import check_access, diagnose_access, migrate_legacy_config
+from hydra_umc_bridge_cnc.config_access import check_access, diagnose_access, ensure_directory, migrate_legacy_config
 from hydra_umc_bridge_cnc.service import CONFIG_ENVIRONMENT, DEFAULT_CONFIG_PATH, main
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +64,37 @@ class MigrationTests(unittest.TestCase):
 
     def test_a_group_that_does_not_exist_is_not_a_group(self):
         self.assertFalse(config_access.group_exists("hydra-no-such-group-xyz"))
+
+
+class DirectoryTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+
+    def test_the_directory_of_the_service_is_made_and_set_to_0750(self):
+        directory = self.base / "hydra-umc-bridge-cnc"
+        self.assertEqual(ensure_directory(str(directory)), "ready")
+        self.assertTrue(directory.is_dir())
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o750)
+
+    def test_a_directory_that_systemd_made_with_another_mode_is_set_to_0750(self):
+        directory = self.base / "hydra-umc-bridge-cnc"
+        directory.mkdir()
+        if os.name != "nt":
+            directory.chmod(0o700)
+        ensure_directory(str(directory))
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o750)
+
+    def test_the_shared_directory_is_never_changed(self):
+        shared = self.base / "hydra-umc"
+        shared.mkdir()
+        before = shared.stat().st_mode
+        with self.assertRaises(ValueError):
+            ensure_directory(str(shared))
+        self.assertEqual(shared.stat().st_mode, before)
 
 
 class AccessTests(unittest.TestCase):
@@ -137,6 +168,27 @@ class FlagsTests(unittest.TestCase):
         code, _, err = self.run_main("--check")
         self.assertEqual(code, 2)
         self.assertIn("configuration error", err)
+
+    def test_prepare_config_only_changes_a_directory_that_is_the_one_of_the_service(self):
+        elsewhere = self.base / "elsewhere" / "bridge-cnc.toml"
+        elsewhere.parent.mkdir()
+        if os.name != "nt":
+            elsewhere.parent.chmod(0o755)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--config", str(elsewhere), "--prepare-config", "--legacy-config", str(self.legacy)])
+        self.assertEqual(code, 0)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(elsewhere.parent.stat().st_mode), 0o755)
+
+    def test_prepare_config_sets_the_directory_of_the_service_to_0750(self):
+        config = self.base / "hydra-umc-bridge-cnc" / "bridge-cnc.toml"
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["--config", str(config), "--prepare-config", "--legacy-config", str(self.legacy)])
+        self.assertEqual(code, 0)
+        if os.name != "nt":
+            self.assertEqual(stat.S_IMODE(config.parent.stat().st_mode), 0o750)
 
     def test_check_access_exits_zero_when_readable_and_two_with_the_reason_when_not(self):
         self.config.parent.mkdir()
