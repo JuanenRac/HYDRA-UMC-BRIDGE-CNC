@@ -271,7 +271,8 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── cncjs_link.py              CNCjs 連携（feedhold・reset・cyclestart）とそのシミュレーション
 │   ├── multiplexer.py             シリアルポートのマルチプレクサ：ブリッジと G コード送信側が GRBL の 1 ポートを共有
 │   ├── mtconnect_publish.py       MTConnect の観測値と読み取り専用 SHDR アダプター
-│   └── mqtt_transport.py          MQTT のコマンド・状態トランスポート
+│   ├── mqtt_transport.py          MQTT のコマンド・状態トランスポート
+│   └── config_access.py           設定ファイルの場所とアクセス確認
 ├── tests/                         238 件（手書きの GRBL エミュレーター付き）
 ├── deploy/                        systemd ユニットと設定例
 ├── docs/                          ブリッジガイド、証拠の境界

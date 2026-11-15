@@ -271,7 +271,8 @@ HYDRA-UMC-BRIDGE-CNC/
 │   ├── cncjs_link.py              CNCjs 链路（feedhold、reset、cyclestart）及其模拟
 │   ├── multiplexer.py             串口多路复用器：桥接与 G 代码发送端共用一个 GRBL 串口
 │   ├── mtconnect_publish.py       MTConnect 观测值与只读 SHDR 适配器
-│   └── mqtt_transport.py          MQTT 命令与状态传输
+│   ├── mqtt_transport.py          MQTT 命令与状态传输
+│   └── config_access.py           配置文件位置与访问检查
 ├── tests/                         238 项测试（含手写 GRBL 模拟器）
 ├── deploy/                        systemd 单元和示例配置
 ├── docs/                          桥接指南、证据边界
