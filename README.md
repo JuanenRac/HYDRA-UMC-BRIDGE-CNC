@@ -27,7 +27,7 @@ GPL-3.0-or-later - see LICENSE
 
 > **Honesty check - what actually runs today:** the fail-safe cell snapshot and safety gate (`cell.py`'s `CncSnapshot`/`CncCellBridge`, funneling every job through `HYDRA-UMC-SDK`'s own `evaluate_job()`), the read-only GRBL/MTConnect evidence normalizer (`observation.py`), the real GRBL serial transport (`serial_transport.py`'s `GrblSerialProbe`/`GrblRealtimeControl`), and the MQTT command/status transport (`mqtt_transport.py`) are real and covered by 352 passing `unittest` cases (`python tools/build_test.py`), including `tests/test_grbl_emulator.py` running this bridge against a protocol-faithful, hand-written GRBL v1.1 emulator. None of it has touched a real serial port, a real MQTT broker, or an actual CNC controller - `test_serial_transport.py`'s own `FakeSerial` stands in for a physical connection, and `test_mqtt_transport.py` uses a fake broker client the same way. The LinuxCNC and CNCjs links and the MTConnect view have only met simulations, there is no LinuxCNC HAL adapter and there is no live `run` command yet, because no real controller has been driven - see "Roadmap & Known limits" below, which already says this plainly, and `CHANGELOG.md` for exactly what has shipped so far. The MQTT transport has also been run against a real HYDRA-UMC-MQTT-BROKER on a development machine (`tests/test_broker_integration.py`, skipped when no broker is installed): publish and subscribe at QoS 0, 1 and 2, the retained availability and its last will, and the way back after the broker went down and up again.
 
-> **Safety and security status:** this ecosystem is not a certified safety system. There is no hardware E-STOP path, no firmware-enforced limits or interlocks and no verified motion command yet; firmware images are checked with CRC-32 and an Ed25519 signature, and a release build refuses the published development keys (the tool heads and expansion boards behind the relay still run URTC bootloaders, which take a shared-key HMAC-SHA256 instead of a signature); TLS and mutual TLS are optional and off by default; no custom board has been populated or tested yet. Read the [security baseline](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) and the [threat model](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) before relying on any statement here for the safety of a person.
+> **Safety and security status:** this ecosystem is not a certified safety system. There is no hardware E-STOP path, no firmware-enforced limits or interlocks and no verified motion command yet; firmware images are checked with CRC-32 and an Ed25519 signature, and a release build refuses the published development keys (the URTC bootloaders behind the relay no longer take a shared key: the main board verifies an Ed25519 record against a table of public keys, and an expansion board installs an image only when the main board has confirmed that exact image to it); TLS and mutual TLS are optional and off by default; no custom board has been populated or tested yet. Read the [security baseline](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) and the [threat model](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) before relying on any statement here for the safety of a person.
 
 ---
 
@@ -52,7 +52,7 @@ Each line is one part of this repository and the light says how far it is today.
 
 | Area | State | What it means here |
 |---|---|---|
-| Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
+| Software | 🟡 | Works for its main purpose; the honesty check of this README lists what is still missing |
 | Tests | 🟢 | 352 automated tests, run on every change |
 | Real hardware | 🟠 | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 | Interface and protocols | 🟡 | The routes or messages it offers are documented and tested with a client; not every client has used them yet |
@@ -181,6 +181,8 @@ The library: `CncCellBridge`, `CncSnapshot`, `CncMqttBridge`, `spindle_gate_from
 | `HYDRA_MQTT_TLS_CERT` / `HYDRA_MQTT_TLS_KEY` | none | The client certificate and its key for a broker that demands mutual TLS; both are needed |
 
 The controller link is chosen in code: pass `controller=` to `CncMqttBridge` for LinuxCNC or CNCjs, otherwise the bridge holds a GRBL serial connection. While it holds that port no G-code sender can use it (see `docs/BRIDGE_GUIDE.md`, "One serial port").
+
+**Where the cell state comes from.** `[cell_state] source = "file"` reads the first word of a file (for example `/run/hydra-umc/cell_state`) and takes a missing, unknown or old file as `SAFE_STOP`; `source = "fixed"` uses one value for ever (`INHIBITED` by default). The file is written by HYDRA-UMC-SAFETY-ZONES when its zones file switches `cellState.enabled` on (off by default; see its `docs/CELL_STATE.md`): `READY` only while its last verdict is `READY` and recent, `SAFE_STOP` at a clean stop, and the file goes stale if that service dies. Without that service running there is no producer, so a bridge on `file` reads `SAFE_STOP`; setting `fixed` to `READY` is a decision of the operator that leaves the safety zones out of the gate. Not tried with a real bridge on a real cell.
 
 ## 🚀 Quick start
 

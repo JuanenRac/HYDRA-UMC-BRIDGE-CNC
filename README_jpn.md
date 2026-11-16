@@ -27,7 +27,7 @@ GPL-3.0-or-later - see LICENSE
 
 > **誠実性チェック - 今日実際に動くもの:** フェイルセーフなセルスナップショットと安全ゲート（`cell.py` の `CncSnapshot`/`CncCellBridge`。すべてのジョブは `HYDRA-UMC-SDK` 自身の本物の `evaluate_job()` を通過する）、読み取り専用の GRBL/MTConnect エビデンス正規化（`observation.py`）、本物の GRBL シリアルトランスポート（`serial_transport.py` の `GrblSerialProbe`/`GrblRealtimeControl`）、および MQTT コマンド/状態トランスポート（`mqtt_transport.py`）は本物であり、352件の通過する `unittest` ケースで検証されている（`python tools/build_test.py`）。これにはプロトコルに忠実な手書きの GRBL v1.1 エミュレータに対してこのブリッジを動かす `tests/test_grbl_emulator.py` も含まれる。これらはいずれも本物のシリアルポート、本物の MQTT ブローカー、実際の CNC コントローラには一切触れていない - `test_serial_transport.py` 独自の `FakeSerial` が物理接続を置き換えており、`test_mqtt_transport.py` も同様に模擬ブローカークライアントを使用している。LinuxCNC と CNCjs の接続および MTConnect ビューはシミュレーションにしか触れておらず、実際のコントローラがまだ一度も駆動されていないため、LinuxCNC HAL アダプターも実機向けの `run` コマンドもまだ存在しない - 詳細は下記の「ロードマップと既知の制限」に既に明記されており、これまでに実際に出荷された内容は `CHANGELOG.md` を参照。 MQTT トランスポートは、開発用マシン上の本物の HYDRA-UMC-MQTT-BROKER に対しても実行されています(`tests/test_broker_integration.py`。ブローカーが未インストールの場合はスキップされます)。QoS 0・1・2 でのパブリッシュとサブスクライブ、保持された可用性とそのラストウィル、ブローカーが停止して再起動した後の復帰を確認しています。
 
-> **安全性とセキュリティの現状:** このエコシステムは認証された安全システムではありません。ハードウェアの E-STOP 経路、ファームウェアが強制する制限やインターロック、検証済みの動作コマンドはまだありません。ファームウェアイメージは CRC-32 と Ed25519 署名で検査し、リリースビルドは公開済みの開発用鍵を拒否します(リレーの先のツールヘッドと拡張ボードは引き続き URTC のブートローダーを使い、署名ではなく共有鍵の HMAC-SHA256 を使います)。TLS と相互 TLS は任意で、既定では無効です。独自基板はまだ実装も試験もされていません。ここに書かれた内容を人の安全のために頼る前に、[セキュリティベースライン](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)と[脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)をお読みください。
+> **安全性とセキュリティの現状:** このエコシステムは認証された安全システムではありません。ハードウェアの E-STOP 経路、ファームウェアが強制する制限やインターロック、検証済みの動作コマンドはまだありません。ファームウェアイメージは CRC-32 と Ed25519 署名で検査し、リリースビルドは公開済みの開発用鍵を拒否します(リレーの先の URTC のブートローダーは共有鍵を使わなくなりました。メイン基板が公開鍵の表に対して Ed25519 のレコードを検証し、拡張ボードはメイン基板がそのイメージ自体を確認した場合にだけイメージをインストールします)。TLS と相互 TLS は任意で、既定では無効です。独自基板はまだ実装も試験もされていません。ここに書かれた内容を人の安全のために頼る前に、[セキュリティベースライン](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)と[脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)をお読みください。
 
 ---
 
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
-| ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
+| ソフトウェア | 🟡 | 主な目的では動作します。足りない点はこの README の正直さの確認に書かれています |
 | テスト | 🟢 | 自動テスト 352 件。変更のたびに実行されます |
 | 実機 | 🟠 | シミュレーションのみ：エミュレーター、模擬部品、シミュレーターで試験済み。このバージョンについて実機での動作記録はありません |
 | インターフェースとプロトコル | 🟡 | 提供するルートやメッセージは文書化され、クライアントで試験済みです。すべてのクライアントがまだ使ったわけではありません |
@@ -181,6 +181,8 @@ flowchart LR
 | `HYDRA_MQTT_TLS_CERT` / `HYDRA_MQTT_TLS_KEY` | なし | 相互 TLS を求めるブローカー用のクライアント証明書とその鍵。両方が必要です |
 
 コントローラー連携はコードで選びます。LinuxCNC や CNCjs には `CncMqttBridge` に `controller=` を渡し、それ以外ではブリッジが GRBL のシリアル接続を保持します。保持している間、G コード送信ソフトはそのポートを使えません（`docs/BRIDGE_GUIDE.md` の「One serial port」を参照）。
+
+**セルの状態の出どころ。** `[cell_state] source = "file"` はファイル（たとえば `/run/hydra-umc/cell_state`）の最初の単語を読み、ファイルが無い、未知の値、または古い場合は `SAFE_STOP` として扱います。`source = "fixed"` は常に一つの値（既定は `INHIBITED`）を使います。このファイルは、HYDRA-UMC-SAFETY-ZONES のゾーンファイルで `cellState.enabled` を有効にしたとき（既定は無効。`docs/CELL_STATE.md` を参照）に書かれます。直近の判定が `READY` で新しい間だけ `READY`、正常停止時は `SAFE_STOP` で、そのサービスが止まるとファイルは古くなります。そのサービスが動いていなければ書き手がいないため、`file` のブリッジは `SAFE_STOP` を読みます。`fixed` を `READY` にするのは運用者の判断であり、安全ゾーンをゲートから外すことになります。実機のセルで実際のブリッジを使った試験は行っていません。
 
 ## 🚀 クイックスタート
 
