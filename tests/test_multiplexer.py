@@ -172,6 +172,45 @@ class TheBridgeNeverStreamsAProgramTests(_Rig):
         self.assertEqual(self.grbl.state, "Run")
 
 
+class _RecordingGrbl(GrblEmulator):
+    """The emulator, remembering every byte that reaches it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.received = bytearray()
+
+    def write(self, data: bytes) -> int:
+        self.received.extend(data)
+        return super().write(data)
+
+
+class ExtendedRealtimeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.grbl = _RecordingGrbl()
+        self.allowed = True
+        self.mux = SerialMultiplexer(self.grbl, PortSharingConfig(enabled=True, port=0), sender_allowed=lambda: self.allowed)
+        self.address = self.mux.start()
+        self.addCleanup(self.mux.close)
+
+    def test_the_extended_realtime_bytes_pass_at_once_even_when_the_gate_says_no(self) -> None:
+        sender = socket.create_connection(self.address, timeout=2.0)
+        self.addCleanup(sender.close)
+        self.allowed = False
+        for byte in (0x84, 0x85, 0x90, 0x9E):
+            sender.sendall(bytes([byte]))
+        self.assertTrue(_wait(lambda: bytes(self.grbl.received) == bytes([0x84, 0x85, 0x90, 0x9E])), bytes(self.grbl.received))
+
+    def test_a_jog_cancel_in_the_middle_of_a_line_is_not_held_with_the_line(self) -> None:
+        sender = socket.create_connection(self.address, timeout=2.0)
+        self.addCleanup(sender.close)
+        self.allowed = False
+        sender.sendall(b"$J=G91 X1\x85 F100")
+        self.assertTrue(_wait(lambda: b"\x85" in bytes(self.grbl.received)))
+        sender.sendall(b"\n")
+        self.assertIn(b"error:9", _read_until(sender, b"error:9"))
+        self.assertNotIn(b"$J", bytes(self.grbl.received))
+
+
 class SenderGateTests(unittest.TestCase):
     def setUp(self) -> None:
         self.grbl = GrblEmulator()

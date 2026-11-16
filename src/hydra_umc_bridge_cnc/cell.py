@@ -55,10 +55,11 @@ class CncSnapshot:
     def spindle_stopped(self) -> bool | None:
         """True when the controller reports no spindle speed and no feed, False when it reports either, None when it did not say."""
 
+        # Either value that is known and above zero is enough: a report with a feed but no spindle speed is not "did not say".
+        if (self.spindle_speed is not None and self.spindle_speed > 0) or (self.feed_rate is not None and self.feed_rate > 0):
+            return False
         if self.spindle_speed is None:
             return None
-        if self.spindle_speed > 0 or (self.feed_rate is not None and self.feed_rate > 0):
-            return False
         return True
 
     def machine_state(self) -> MachineState:
