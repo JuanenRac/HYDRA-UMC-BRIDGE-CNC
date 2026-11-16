@@ -59,6 +59,12 @@ class StatusFieldsTests(unittest.TestCase):
         self.assertIsNone(snapshot.spindle_speed)
         self.assertIsNone(snapshot.spindle_stopped())
 
+    def test_a_known_feed_is_enough_to_say_the_spindle_is_not_stopped(self):
+        moving = snapshot_from_mapping({"state": "Run", "estop": False, "door_closed": True, "feed_rate": 300.0})
+        self.assertIsNone(moving.spindle_speed)
+        self.assertIs(moving.spindle_stopped(), False)
+        self.assertIsNone(snapshot_from_mapping({"state": "Idle", "estop": False, "door_closed": True, "feed_rate": 0.0}).spindle_stopped())
+
     def test_a_mapping_takes_only_real_numbers(self):
         good = snapshot_from_mapping({"state": "Idle", "estop": False, "door_closed": True, "spindle_speed": 0, "feed_rate": 0.0})
         self.assertTrue(good.spindle_stopped())
