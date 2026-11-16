@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The README tells what writes the cell state file the bridge reads:** the `[cell_state] file` source is produced by HYDRA-UMC-SAFETY-ZONES when its zones file switches `cellState.enabled` on (off by default); without it a bridge on `file` reads `SAFE_STOP`. **The README states the URTC bootloader check correctly and points to its own honesty check:** the shared safety notice no longer says that the URTC bootloaders behind the relay take a shared-key HMAC-SHA256 (the main board verifies an Ed25519 record and an expansion board installs only an image the main board confirmed), and the status lines no longer send the reader to a check "above" that is further down. README and its seven translations regenerated.
 
 ## [0.2.8]
 
