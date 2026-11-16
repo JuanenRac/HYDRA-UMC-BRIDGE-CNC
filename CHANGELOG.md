@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The extended real-time bytes of the sender pass at once in the shared port:** the door, jog cancel, override and spindle stop bytes of GRBL 1.1 (0x80 and above) were kept in the line buffer until the next line end and were dropped with the line when the sender gate said no, so a jog cancel did not cancel; they now go to the controller immediately, like `?`, `!`, `~` and Ctrl-X. Two tests cover it.
 - **The README tells what writes the cell state file the bridge reads:** the `[cell_state] file` source is produced by HYDRA-UMC-SAFETY-ZONES when its zones file switches `cellState.enabled` on (off by default); without it a bridge on `file` reads `SAFE_STOP`. **The README states the URTC bootloader check correctly and points to its own honesty check:** the shared safety notice no longer says that the URTC bootloaders behind the relay take a shared-key HMAC-SHA256 (the main board verifies an Ed25519 record and an expansion board installs only an image the main board confirmed), and the status lines no longer send the reader to a check "above" that is further down. README and its seven translations regenerated.
 
 ## [0.2.8]

@@ -18,13 +18,15 @@ What goes where:
 * everything the controller writes goes to the sender as it came, and every complete line of it is also kept for the
   bridge (its status queries read from there);
 * everything the sender writes goes to the controller as it came: the multiplexer never rewrites, delays or inspects a
-  program (except the optional ``sender_allowed`` gate below);
+  program (except the optional ``sender_allowed`` gate below and the real-time bytes, which it passes on at once);
 * the bridge writes ONLY GRBL's own real-time bytes (``?`` ``!`` ``~`` and Ctrl-X). Anything else it tries to write is
   refused with a ``ValueError``: the bridge never streams a program, with or without a multiplexer. A real-time byte goes
   out at once, between two bytes of the sender, which is exactly what GRBL's real-time channel is for;
 * ``sender_allowed`` (optional) is asked before a non-real-time line of the sender is written. While it says no, that
   line is not written and the sender gets ``error:9`` (GRBL's "G-code locked out") so it does not wait for an ``ok``.
-  Real-time bytes of the sender are never held: whoever runs the machine can always stop it.
+  Real-time bytes of the sender are never held: whoever runs the machine can always stop it. A real-time byte is one of
+  ``? ! ~`` and Ctrl-X and every byte from 0x80 up, which GRBL 1.1 reads as an extended real-time command (door, jog
+  cancel, overrides, spindle stop) wherever it appears and never as part of a line.
 
 The configuration is conservative: the multiplexer is OFF unless asked for, its front listens on the loopback address only,
 and a second sender is refused while one is connected. Nothing here has run against a real GRBL board; the tests run it
@@ -58,6 +60,7 @@ ALLOW_REMOTE_ENVIRONMENT = "HYDRA_UMC_CNC_PORT_SHARING_ALLOW_REMOTE"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5700
 REALTIME_BYTES = frozenset({0x3F, 0x21, 0x7E, 0x18})  # ? ! ~ Ctrl-X
+EXTENDED_REALTIME_FROM = 0x80  # GRBL 1.1: 0x80 and above are extended real-time commands, never part of a line
 LOCKED_OUT_REPLY = b"error:9\r\n"
 MAX_BRIDGE_LINES = 256
 MAX_LINE_BYTES = 4096
@@ -300,7 +303,7 @@ class SerialMultiplexer:
             if not data:
                 break
             for byte in data:
-                if byte in REALTIME_BYTES:
+                if byte in REALTIME_BYTES or byte >= EXTENDED_REALTIME_FROM:
                     self._write_sender_bytes(bytes([byte]))
                     continue
                 pending.append(byte)
