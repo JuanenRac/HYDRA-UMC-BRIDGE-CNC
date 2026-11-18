@@ -436,6 +436,7 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
     bridge_box: list[object] = []
     closers: list[Callable[[], None]] = []
     connection = None
+    multiplexer = None
     controller = None
     settings = config.controller
     if settings.kind == "grbl":
@@ -475,6 +476,8 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
         reset_in_alarm=config.reset_in_alarm,
     )
     bridge_box.append(bridge)
+    if connection is not None and config.port_sharing.hold_sender_when == "unsafe" and multiplexer is not None:
+        bridge.held_lines_reader = lambda: multiplexer.held_lines
     return bridge, closers
 
 

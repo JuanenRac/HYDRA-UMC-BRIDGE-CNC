@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The state counts the lines of the sender that were held:** with `hold_sender_when = "unsafe"` the answer to `cmd/status` carries `held_sender_lines`, the number of lines answered with `error:9` since the service started.
+
 - **A soft reset that would clear an alarm can wait for a safe cell:** `reset_in_alarm` in `[gate]` is `allow` by default (nothing changes); with `gated`, when the controller reports an alarm the reset is only sent with the cell READY and no global stop, and the answer says why it was held. A reset while the machine runs or holds is still a stop and is never held back, and a status that cannot be read in time does not delay it.
 
 - **The G-code sender can be held while the cell is not safe:** `hold_sender_when` in `[port_sharing]` is `never` by default (nothing changes); with `unsafe`, the lines of the sender get `error:9` while the E-STOP is pressed, the door is open, the cell is in SAFE_STOP or FAULT, or the global stop is active, and the real-time bytes always pass.
