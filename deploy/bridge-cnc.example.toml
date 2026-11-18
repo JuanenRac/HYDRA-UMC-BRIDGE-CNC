@@ -62,6 +62,8 @@ max_age_seconds = 30
 # The spindle gate for the phases in which an arm reaches into the machine: off, when_known or required.
 [gate]
 spindle = "when_known"
+# "allow" sends the soft reset always; "gated" holds the reset of an alarm until the cell is READY and no global stop is active.
+reset_in_alarm = "allow"
 
 [mtconnect]
 enabled = false

@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A soft reset that would clear an alarm can wait for a safe cell:** `reset_in_alarm` in `[gate]` is `allow` by default (nothing changes); with `gated`, when the controller reports an alarm the reset is only sent with the cell READY and no global stop, and the answer says why it was held. A reset while the machine runs or holds is still a stop and is never held back, and a status that cannot be read in time does not delay it.
+
 - **The G-code sender can be held while the cell is not safe:** `hold_sender_when` in `[port_sharing]` is `never` by default (nothing changes); with `unsafe`, the lines of the sender get `error:9` while the E-STOP is pressed, the door is open, the cell is in SAFE_STOP or FAULT, or the global stop is active, and the real-time bytes always pass.
 
 - **A known feed above zero now means the spindle is not stopped even when the spindle speed is not reported:** `spindle_stopped()` answered "the controller did not say" for a report that carried a feed but no spindle speed, so the spindle gate in `when_known` mode did not refuse the entry of an arm into a moving machine; a test covers it.
