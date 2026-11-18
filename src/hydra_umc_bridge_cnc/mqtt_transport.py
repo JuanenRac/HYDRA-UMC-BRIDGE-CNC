@@ -89,8 +89,10 @@ GLOBAL_STOP_ENVIRONMENT_NAME = "CNC"
 _LOG = logging.getLogger(__name__)
 
 
-def _snapshot_payload(snapshot: CncSnapshot, observed_at_ms: int) -> str:
+def _snapshot_payload(snapshot: CncSnapshot, observed_at_ms: int, held_lines: int | None = None) -> str:
     payload = asdict(snapshot)
+    if held_lines is not None:
+        payload["held_sender_lines"] = held_lines
     payload["machine_state"] = snapshot.machine_state().value
     # when this reading was taken: a retained state without it cannot be told from one that is hours old
     payload["observed_at"] = observed_at_ms
@@ -192,6 +194,7 @@ class CncMqttBridge:
         if reset_in_alarm not in ("allow", "gated"):
             raise ValueError(f"reset_in_alarm must be allow or gated, got {reset_in_alarm!r}")
         self._reset_in_alarm = reset_in_alarm
+        self.held_lines_reader: Callable[[], int] | None = None  # set by the service when the sender is held: shown in the state
         self._clock = clock
         # one status query at a time on the serial port: two readers would take each other's replies
         self._status_lock = threading.Lock()
@@ -302,7 +305,7 @@ class CncMqttBridge:
         if suffix == "cmd/status":
             snapshot = self.refresh_status()
             now_ms = int(self._clock() * 1000)
-            publishes = [MqttPublish(f"{TOPIC_PREFIX}state", _snapshot_payload(snapshot, now_ms), retain=True)]
+            publishes = [MqttPublish(f"{TOPIC_PREFIX}state", _snapshot_payload(snapshot, now_ms, self.held_lines_reader() if self.held_lines_reader is not None else None), retain=True)]
             if self._mtconnect:
                 publishes.append(MqttPublish(MTCONNECT_TOPIC, json.dumps(observations_payload(snapshot, now_ms, self._mtconnect_device)), retain=True))
             return publishes

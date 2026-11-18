@@ -223,8 +223,10 @@ class SenderGateTests(unittest.TestCase):
         sender = socket.create_connection(self.address, timeout=2.0)
         self.addCleanup(sender.close)
         self.allowed = False
+        self.assertEqual(self.mux.held_lines, 0)
         sender.sendall(b"G1 X10 F100\n")
         self.assertIn(b"error:9", _read_until(sender, b"error:9"))
+        self.assertEqual(self.mux.held_lines, 1)
         self.grbl.start_program()
         sender.sendall(b"!")
         self.assertTrue(_wait(lambda: self.grbl.state == "Hold"))

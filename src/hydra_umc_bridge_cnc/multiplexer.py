@@ -160,6 +160,7 @@ class SerialMultiplexer:
         self._listener: socket.socket | None = None
         self._threads: list[threading.Thread] = []
         self._port_error: Exception | None = None
+        self._held_lines = 0
 
     # -- life cycle -------------------------------------------------------------------------------------------------
 
@@ -317,12 +318,20 @@ class SerialMultiplexer:
 
     def _write_sender_line(self, client: socket.socket, line: bytes) -> None:
         if self._sender_allowed is not None and not self._allowed():
+            with self._sender_lock:
+                self._held_lines += 1
             try:
                 client.sendall(LOCKED_OUT_REPLY)
             except OSError:
                 pass
             return
         self._write_sender_bytes(line)
+
+    @property
+    def held_lines(self) -> int:
+        """How many lines of the sender were answered with error:9 because the gate said no."""
+        with self._sender_lock:
+            return self._held_lines
 
     def _allowed(self) -> bool:
         try:
