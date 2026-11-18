@@ -58,6 +58,7 @@ from typing import Callable
 from hydra_umc_sdk.bridge_contract import CellState, JobPhase, MachineState, decision_to_dict
 from hydra_umc_sdk.bridge_contract import BridgeJob
 from hydra_umc_sdk.job_intake import IdempotencyStore, JobIntake
+from hydra_umc_sdk.serial_link import RealtimeCommandResult
 from hydra_umc_sdk.bridge_transport import MessageDispatcher as SharedMessageDispatcher
 from hydra_umc_sdk.bridge_transport import BridgeHardening, hardening_from_environment
 from hydra_umc_sdk.bridge_transport import MqttPublish, connect_with_retry, open_bridge_client  # noqa: F401  (re-exported)
@@ -164,6 +165,7 @@ class CncMqttBridge:
         mtconnect_device: str = DEFAULT_DEVICE,
         global_stop: GlobalStopGuard | GlobalStopSettings | None = None,
         in_doubt_consult: bool | None = None,
+        reset_in_alarm: str = "allow",
     ) -> None:
         """``connection`` is the GRBL serial port; pass ``controller`` instead (a ``LinuxcncController``, a ``CncjsController``)
         for a machine that is not a GRBL board on a port of its own. ``spindle_gate`` is the mode of the spindle gate for the
@@ -187,6 +189,9 @@ class CncMqttBridge:
         self._estop = estop
         self._door_closed = door_closed
         self._cell_state = cell_state
+        if reset_in_alarm not in ("allow", "gated"):
+            raise ValueError(f"reset_in_alarm must be allow or gated, got {reset_in_alarm!r}")
+        self._reset_in_alarm = reset_in_alarm
         self._clock = clock
         # one status query at a time on the serial port: two readers would take each other's replies
         self._status_lock = threading.Lock()
@@ -309,6 +314,10 @@ class CncMqttBridge:
                 self._confirm(answer)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/feed_hold/result", json.dumps(answer), qos=RESULT_QOS)]
         if suffix == "cmd/soft_reset":
+            refusal = self._reset_refusal()
+            if refusal is not None:
+                result = RealtimeCommandResult(False, False, refusal)
+                return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)), qos=RESULT_QOS)]
             result = self._controller.soft_reset()
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(asdict(result)), qos=RESULT_QOS)]
         if suffix == "cmd/cycle_start_resume":
@@ -328,6 +337,25 @@ class CncMqttBridge:
         if suffix == "cmd/job":
             return [self._handle_job(payload)]
         return []
+
+    def _reset_refusal(self) -> str | None:
+        """Why a soft reset is not sent now, or None to send it. Only with ``reset_in_alarm = "gated"``: a reset that clears an alarm needs the cell READY and no global stop.
+
+        A reset while the machine runs or holds is a stop and is never held back; when the state cannot be read in time the reset is sent (still a stop)."""
+
+        if self._reset_in_alarm != "gated":
+            return None
+        try:
+            state = self.refresh_status().machine_state()
+        except Exception:  # noqa: BLE001 - not being able to read must never delay a stop
+            return None
+        if state not in (MachineState.FAULT, MachineState.SAFE_STOP):
+            return None
+        if self.global_stop.enabled and self.global_stop.blocks():
+            return "the reset of an alarm is held while the global stop is active"
+        if self._cell_state() is not CellState.READY:
+            return f"the reset of an alarm is held while the cell is {self._cell_state().value}"
+        return None
 
     def _confirm(self, answer: dict) -> None:
         """Add what the controller reported after a feed hold to `answer`."""

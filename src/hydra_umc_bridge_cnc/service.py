@@ -112,6 +112,7 @@ class ServiceConfig:
     idempotency_path: str | None = None
     global_stop: GlobalStopSettings = field(default_factory=GlobalStopSettings)
     hardening: BridgeHardening | None = None    # the [hardening] table; None: the environment of the service decides
+    reset_in_alarm: str = "allow"    # [gate] reset_in_alarm: "allow" (the default) or "gated"
 
 
 def _table(parent: dict, key: str) -> dict:
@@ -236,10 +237,13 @@ def parse_config(data: dict) -> ServiceConfig:
         raise ConfigError("cell_state.max_age_seconds must be positive")
 
     gate_table = _table(data, "gate")
-    _only(gate_table, {"spindle"}, "gate")
+    _only(gate_table, {"spindle", "reset_in_alarm"}, "gate")
     spindle = _kind(gate_table, "spindle", str, "gate", SPINDLE_GATE_WHEN_KNOWN)
     if spindle not in SPINDLE_GATE_MODES:
         raise ConfigError(f"gate.spindle must be one of {', '.join(SPINDLE_GATE_MODES)}")
+    reset_in_alarm = _kind(gate_table, "reset_in_alarm", str, "gate", "allow")
+    if reset_in_alarm not in ("allow", "gated"):
+        raise ConfigError("gate.reset_in_alarm must be allow or gated")
     mt_table = _table(data, "mtconnect")
     _only(mt_table, {"enabled"}, "mtconnect")
     idem = _table(data, "idempotency")
@@ -282,6 +286,7 @@ def parse_config(data: dict) -> ServiceConfig:
         _kind(idem, "path", str, "idempotency"),
         global_stop,
         hardening,
+        reset_in_alarm,
     )
 
 
@@ -467,6 +472,7 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
         spindle_gate=config.spindle_gate,
         mtconnect=config.mtconnect,
         global_stop=config.global_stop,
+        reset_in_alarm=config.reset_in_alarm,
     )
     bridge_box.append(bridge)
     return bridge, closers
