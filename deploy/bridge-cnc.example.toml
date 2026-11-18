@@ -25,6 +25,8 @@ timeout_seconds = 1.0
 enabled = false
 host = "127.0.0.1"
 port = 5700
+# "never" never holds the sender; "unsafe" answers error:9 to its lines while the E-STOP is pressed, the door is open, the cell is SAFE_STOP/FAULT or the global stop is active.
+hold_sender_when = "never"
 
 # The E-STOP and the door. "unsafe_level" is what the signal reads when the cell is NOT safe: write what your wiring does.
 # A signal with no source is "E-STOP pressed" / "door open" (fail-closed).

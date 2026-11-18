@@ -204,13 +204,14 @@ def parse_config(data: dict) -> ServiceConfig:
         raise ConfigError("controller.url is required for a cncjs controller")
 
     sharing_table = _table(data, "port_sharing")
-    _only(sharing_table, {"enabled", "host", "port", "allow_remote", "read_timeout_seconds"}, "port_sharing")
+    _only(sharing_table, {"enabled", "host", "port", "allow_remote", "read_timeout_seconds", "hold_sender_when"}, "port_sharing")
     sharing = PortSharingConfig(
         _kind(sharing_table, "enabled", bool, "port_sharing", False),
         _kind(sharing_table, "host", str, "port_sharing", DEFAULT_HOST),
         _kind(sharing_table, "port", int, "port_sharing", DEFAULT_PORT),
         _kind(sharing_table, "allow_remote", bool, "port_sharing", False),
         _kind(sharing_table, "read_timeout_seconds", float, "port_sharing", 1.0),
+        _kind(sharing_table, "hold_sender_when", str, "port_sharing", "never"),
     )
     try:
         sharing.validate()
@@ -388,6 +389,27 @@ def unsafe_reader(config: SignalConfig, *, clock: Callable[[], float] = time.tim
     return read_file
 
 
+def unsafe_sender_gate(
+    estop: Callable[[], bool],
+    door_closed: Callable[[], bool],
+    cell_state: Callable[[], CellState],
+    global_stop: Callable[[], object | None],
+) -> Callable[[], bool]:
+    """The gate of the G-code sender: no while the E-STOP is pressed, the door is open, the cell is in SAFE_STOP or FAULT, or the global stop is active.
+
+    Real-time bytes (hold, stop, status) never pass through it; only the lines of a program do."""
+
+    def allowed() -> bool:
+        if estop() or not door_closed():
+            return False
+        if cell_state() in (CellState.SAFE_STOP, CellState.FAULT):
+            return False
+        guard = global_stop()
+        return not (guard is not None and guard.blocks())  # type: ignore[attr-defined]
+
+    return allowed
+
+
 def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, open_cncjs=None, open_linuxcnc=None, clock: Callable[[], float] = time.time):
     """The bridge and what it has to close; the ``open_*`` arguments are for tests."""
 
@@ -405,6 +427,8 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
     estop = estop_unsafe
     door_closed = (lambda: not door_open())
 
+    cell_state = cell_state_reader(config.cell_state, clock=clock)
+    bridge_box: list[object] = []
     closers: list[Callable[[], None]] = []
     connection = None
     controller = None
@@ -421,7 +445,10 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
                 return open_serial_port(device, baud=settings.baud, timeout_seconds=settings.timeout_seconds)
 
         port = ReconnectingSerialConnection(connect)
-        connection, multiplexer = share_serial_port(port, config.port_sharing)
+        sender_gate = None
+        if config.port_sharing.hold_sender_when == "unsafe":
+            sender_gate = unsafe_sender_gate(estop, door_closed, cell_state, lambda: getattr(bridge_box[0], "global_stop", None) if bridge_box else None)
+        connection, multiplexer = share_serial_port(port, config.port_sharing, sender_allowed=sender_gate)
         if multiplexer is not None:
             closers.append(multiplexer.close)
     elif settings.kind == "cncjs":
@@ -433,7 +460,7 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
         connection,
         estop,
         door_closed,
-        cell_state_reader(config.cell_state, clock=clock),
+        cell_state,
         idempotency,
         clock=clock,
         controller=controller,
@@ -441,6 +468,7 @@ def build_bridge(config: ServiceConfig, *, open_gpio=None, open_serial=None, ope
         mtconnect=config.mtconnect,
         global_stop=config.global_stop,
     )
+    bridge_box.append(bridge)
     return bridge, closers
 
 

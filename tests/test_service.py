@@ -86,6 +86,36 @@ class ParseTests(unittest.TestCase):
             parse_config({"controller": {"kind": "linuxcnc"}, "port_sharing": {"enabled": True}})
         parse_config({"controller": {"kind": "linuxcnc"}})
 
+    def test_hold_sender_when_is_never_by_default_and_checked(self):
+        self.assertEqual(parse_config({"controller": {"kind": "linuxcnc"}}).port_sharing.hold_sender_when, "never")
+        config = parse_config({"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True, "hold_sender_when": "unsafe"}})
+        self.assertEqual(config.port_sharing.hold_sender_when, "unsafe")
+        with self.assertRaisesRegex(ConfigError, "hold_sender_when"):
+            parse_config({"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True, "hold_sender_when": "sometimes"}})
+
+    def test_the_sender_gate_says_no_for_every_unsafe_condition(self):
+        from hydra_umc_sdk.bridge_contract import CellState
+
+        from hydra_umc_bridge_cnc.service import unsafe_sender_gate
+
+        class Guard:
+            def __init__(self, blocking):
+                self.blocking = blocking
+
+            def blocks(self):
+                return self.blocking
+
+        def gate(estop=False, door=True, cell=CellState.READY, guard=None):
+            return unsafe_sender_gate(lambda: estop, lambda: door, lambda: cell, lambda: guard)()
+
+        self.assertTrue(gate())
+        self.assertTrue(gate(guard=Guard(False)))
+        self.assertFalse(gate(estop=True))
+        self.assertFalse(gate(door=False))
+        self.assertFalse(gate(cell=CellState.SAFE_STOP))
+        self.assertFalse(gate(cell=CellState.FAULT))
+        self.assertFalse(gate(guard=Guard(True)))
+
     def test_bad_toml_and_missing_file(self):
         with tempfile.TemporaryDirectory() as folder:
             bad = Path(folder) / "bad.toml"
