@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The status table of the README shows the exact test count as confirmed:** the table is regenerated from the recorded data, so the Tests line is green for a count that was collected and that a workflow runs. The README and its seven translations are regenerated.
+
 - **The README names the sender hold and the gated reset:** the configuration table lists `[port_sharing] hold_sender_when` (with the `held_sender_lines` count of `cmd/status`) and `[gate] reset_in_alarm`, the test table lists the new test files, and the test counts are current. The README and its seven translations are regenerated.
 
 - **The state counts the lines of the sender that were held:** with `hold_sender_when = "unsafe"` the answer to `cmd/status` carries `held_sender_lines`, the number of lines answered with `error:9` since the service started.
