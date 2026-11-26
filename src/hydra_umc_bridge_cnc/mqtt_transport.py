@@ -34,7 +34,8 @@ Topic scheme (published under HYDRA-UMC-MQTT-BROKER's own
   hydra/bridges/cnc/mtconnect                <- published, RETAINED, only when switched on (HYDRA_UMC_CNC_MTCONNECT=1): the same state as MTConnect observations (avail, execution, estop, door, spindle_speed, path_feedrate, system)
   hydra/bridges/cnc/cmd/status               -> (empty) refresh + publish state
   hydra/bridges/cnc/cmd/feed_hold            -> (empty) real GRBL feed hold (the result says what the controller reported afterwards)
-  hydra/bridges/cnc/cmd/soft_reset           -> (empty) real GRBL soft reset
+  hydra/bridges/cnc/cmd/soft_reset           -> (empty) real GRBL soft reset, a stop (see cmd/reset_rearm)
+  hydra/bridges/cnc/cmd/reset_rearm          -> {"confirm": "REARM"} the reset that clears an alarm or a door, gated
   hydra/bridges/cnc/cmd/cycle_start_resume   -> (empty) real GRBL cycle start/resume
   hydra/bridges/cnc/cmd/job                  -> BridgeJob JSON (job_to_dict shape) - the shared bridge-contract gate (plan only: it never acts)
   hydra/bridges/cnc/cmd/<verb>/result        <- published, one JSON result per command above
@@ -52,7 +53,7 @@ import os
 import re
 import threading
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Callable
 
 from hydra_umc_sdk.bridge_contract import CellState, JobPhase, MachineState, decision_to_dict
@@ -82,8 +83,14 @@ MAX_PAYLOAD_BYTES = 16 * 1024
 # Handled on their own lane: a stop must never wait behind a status query.
 STOP_VERBS = frozenset({"cmd/feed_hold", "cmd/soft_reset"})
 
+# What a payload of `cmd/reset_rearm` has to say: a reset that clears a latched state is never sent by an empty or a stray message.
+REARM_CONFIRMATION = "REARM"
+RESET_IN_ALARM_MODES = ("separate", "allow", "gated")
+# The states of the controller that a reset would clear (GRBL: Alarm and Door; OFF of LinuxCNC).
+_LATCHED_STATES = (MachineState.FAULT, MachineState.SAFE_STOP)
+
 # Refused while the server announces a global stop (when the bridge follows it): a resume moves the machine, a job asks for work (an abort is let through).
-MOVING_VERBS = frozenset({"cmd/cycle_start_resume"})
+MOVING_VERBS = frozenset({"cmd/cycle_start_resume", "cmd/reset_rearm"})
 GLOBAL_STOP_ENVIRONMENT_NAME = "CNC"
 
 _LOG = logging.getLogger(__name__)
@@ -167,7 +174,7 @@ class CncMqttBridge:
         mtconnect_device: str = DEFAULT_DEVICE,
         global_stop: GlobalStopGuard | GlobalStopSettings | None = None,
         in_doubt_consult: bool | None = None,
-        reset_in_alarm: str = "allow",
+        reset_in_alarm: str = "separate",
     ) -> None:
         """``connection`` is the GRBL serial port; pass ``controller`` instead (a ``LinuxcncController``, a ``CncjsController``)
         for a machine that is not a GRBL board on a port of its own. ``spindle_gate`` is the mode of the spindle gate for the
@@ -191,8 +198,8 @@ class CncMqttBridge:
         self._estop = estop
         self._door_closed = door_closed
         self._cell_state = cell_state
-        if reset_in_alarm not in ("allow", "gated"):
-            raise ValueError(f"reset_in_alarm must be allow or gated, got {reset_in_alarm!r}")
+        if reset_in_alarm not in RESET_IN_ALARM_MODES:
+            raise ValueError(f"reset_in_alarm must be one of {', '.join(RESET_IN_ALARM_MODES)}, got {reset_in_alarm!r}")
         self._reset_in_alarm = reset_in_alarm
         self.held_lines_reader: Callable[[], int] | None = None  # set by the service when the sender is held: shown in the state
         self._clock = clock
@@ -316,7 +323,11 @@ class CncMqttBridge:
                 # GRBL does not answer "!": ask it what it is doing now, so that "sent" is not read as "stopped"
                 self._confirm(answer)
             return [MqttPublish(f"{TOPIC_PREFIX}cmd/feed_hold/result", json.dumps(answer), qos=RESULT_QOS)]
+        if suffix == "cmd/reset_rearm":
+            return [MqttPublish(f"{TOPIC_PREFIX}cmd/reset_rearm/result", json.dumps(self._reset_rearm(payload)), qos=RESULT_QOS)]
         if suffix == "cmd/soft_reset":
+            if self._reset_in_alarm == "separate":
+                return [MqttPublish(f"{TOPIC_PREFIX}cmd/soft_reset/result", json.dumps(self._stop_reset()), qos=RESULT_QOS)]
             refusal = self._reset_refusal()
             if refusal is not None:
                 result = RealtimeCommandResult(False, False, refusal)
@@ -359,6 +370,65 @@ class CncMqttBridge:
         if self._cell_state() is not CellState.READY:
             return f"the reset of an alarm is held while the cell is {self._cell_state().value}"
         return None
+
+    def _stop_reset(self) -> dict:
+        """The soft reset as a stop and nothing else (``reset_in_alarm = "separate"``): it never clears a latched state.
+
+        The machine is held first, so that nothing here delays the stop, and then asked what it reports. In alarm or door (or off) it is already
+        stopped and a reset would arm it again: nothing more is sent and ``cmd/reset_rearm`` is the way. A state that cannot be read, or a
+        status query that is already using the port, is a reason to send the reset, never to hold it back."""
+
+        try:
+            self._controller.feed_hold()
+        except Exception:  # noqa: BLE001 - a hold that cannot be sent must not keep the reset from being tried
+            _LOG.warning("the feed hold before a soft reset could not be sent", exc_info=True)
+        latched = self._latched_state()
+        if latched is not None:
+            answer = asdict(RealtimeCommandResult(True, False, f"the machine is already stopped ({latched.value}); a reset would clear it: publish cmd/reset_rearm"))
+            answer["already_stopped"] = True
+            return answer
+        return asdict(self._controller.soft_reset())
+
+    def _latched_state(self) -> MachineState | None:
+        """FAULT or SAFE_STOP when the controller itself reports one now; None when it does not, or when it cannot be asked without waiting.
+
+        The word of the controller decides, not the safeguards of the cell: with the E-STOP pressed and a controller that still reports a move, the reset is a stop."""
+
+        if not self._status_lock.acquire(blocking=False):
+            return None
+        try:
+            snapshot = self._controller.read_snapshot(estop=self._estop, door_closed=self._door_closed)
+            state = replace(snapshot, estop=False, door_closed=True).machine_state()
+        except Exception:  # noqa: BLE001 - not being able to read must never delay a stop
+            return None
+        finally:
+            self._status_lock.release()
+        return state if state in _LATCHED_STATES else None
+
+    def _reset_rearm(self, payload: bytes) -> dict:
+        """The reset that clears an alarm or a door: only with the confirmation word, a READY cell, no E-STOP, the door closed and a controller that reports a latched state.
+
+        The global stop refuses this verb before it gets here (``MOVING_VERBS``)."""
+
+        def refused(reason: str) -> dict:
+            return asdict(RealtimeCommandResult(False, False, reason))
+
+        try:
+            confirmed = json.loads(payload).get("confirm") == REARM_CONFIRMATION
+        except (ValueError, AttributeError):
+            confirmed = False
+        if not confirmed:
+            return refused(f'a rearm needs the confirmation {{"confirm": "{REARM_CONFIRMATION}"}}')
+        cell = self._cell_state()
+        if cell is not CellState.READY:
+            return refused(f"cell is {cell.value}, not READY")
+        snapshot = self.refresh_status()
+        if snapshot.estop or not snapshot.door_closed:
+            return refused("the E-STOP is pressed or the door is open")
+        state = replace(snapshot, estop=False, door_closed=True).machine_state()
+        if state not in _LATCHED_STATES:
+            return refused(f"CNC is {state.value}: there is nothing to rearm (cmd/soft_reset stops)")
+        return asdict(self._controller.soft_reset())
 
     def _confirm(self, answer: dict) -> None:
         """Add what the controller reported after a feed hold to `answer`."""
