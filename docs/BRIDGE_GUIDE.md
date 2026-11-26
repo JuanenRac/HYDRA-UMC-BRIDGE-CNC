@@ -85,8 +85,9 @@ The server can announce a global stop on `<mqtt prefix>/safety/estop` (a retaine
 | `HYDRA_UMC_CNC_GLOBAL_STOP` | off | `1` makes the bridge subscribe to the announcement (QoS 1, again after every reconnect) |
 | `HYDRA_UMC_CNC_GLOBAL_STOP_TOPIC` | `hydra/swarm/safety/estop` | the topic, when the MQTT prefix of the server is not the default one |
 | `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT` | off | `1` also refuses before the first announcement has been heard |
+| `HYDRA_UMC_CNC_GLOBAL_STOP_KEY_FILE` | not set | the file of the key the server signs the announcement with (at least 32 characters, mode 600): every `SAFE_STOP` is obeyed as before, and only a signed `READY` newer than the last signed announcement ends a stop; the bridge does not start if the file cannot be used |
 
-In the configuration file of the service the same three switches are the table `[global_stop]` (`enabled`, `topic`, `strict`; the example file shows it switched off).
+In the configuration file of the service the same three switches are the table `[global_stop]` (`enabled`, `topic`, `strict`, and `ready_key_file` for the key file; the example file shows it switched off).
 
 While the last announcement says `SAFE_STOP`, says anything but `READY`, or cannot be read, the command handler of the bridge refuses `cmd/cycle_start_resume` and `cmd/job` (an abort job passes) with an answer that gives the reason (`global stop active (SAFE_STOP) - nothing moves until the server announces READY`); `cmd/feed_hold`, `cmd/soft_reset` and `cmd/status` keep working. Only a `READY` message ends it. The announcement is read although it is retained: it is the state, not a replayed command. When the broker is lost the bridge keeps the last state it heard; a bridge that has not heard the topic yet is left as it was, unless `HYDRA_UMC_CNC_GLOBAL_STOP_STRICT` is on. This is a refusal in software: the controller and the machine keep the last word, and the contract adds a stop, it never removes one. Tested against a real broker (`tests/test_global_stop_broker.py`); never run with the real server.
 

@@ -80,6 +80,8 @@ path = "/var/lib/hydra-umc-bridge-cnc/idempotency.sqlite"
 enabled = false
 topic = "hydra/swarm/safety/estop"
 strict = false
+# ready_key_file: the key the server signs the announcement with; when set, only a signed READY ends a stop
+# ready_key_file = "/etc/hydra-umc/global-stop.key"
 
 # The limits of the MQTT transport. All off by default: with this table absent (or "enabled = false") the bridge behaves exactly as before. When it is on:
 #   max_queue:                 the most commands that may wait behind the running one (the OLDEST waiting one is dropped and counted; a stop is never held back)

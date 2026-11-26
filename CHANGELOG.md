@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Only a signed release ends the global stop, when asked:** with `HYDRA_UMC_CNC_GLOBAL_STOP_KEY_FILE` (or `ready_key_file` in `[global_stop]`) every `SAFE_STOP` is obeyed as before and a `READY` counts only when the server signed it with that key. Off without a key file. It needs the SDK version that carries the signed announcement.
 - **The soft reset is a stop and the rearm has its own topic:** `cmd/soft_reset` holds the machine and resets it, but no longer clears an alarm or a door that the controller already reports (the answer says `already_stopped`). The new `cmd/reset_rearm` clears it, only with `{"confirm": "REARM"}`, a READY cell, no E-STOP, the door closed and no global stop. `[gate] reset_in_alarm` gains `separate`, the new default; `allow` and `gated` keep the earlier behaviour. Tested with doubles; not run on a machine.
 
 ## [0.2.9]
