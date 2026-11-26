@@ -97,7 +97,8 @@ class RealtimeCommandTests(unittest.TestCase):
     def test_soft_reset_sends_the_real_grbl_byte(self):
         b, connection, _signals = bridge()
         b.handle_message(f"{TOPIC_PREFIX}cmd/soft_reset", b"")
-        self.assertEqual(connection.written, [b"\x18"])
+        # held first, then asked for its state, then reset
+        self.assertEqual(connection.written, [b"!", b"?", b"\x18"])
 
     def test_cycle_start_resume_always_queries_fresh_status_even_if_one_was_cached(self):
         # regression: reusing whatever refresh_status last saw

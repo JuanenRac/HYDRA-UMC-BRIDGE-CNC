@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The soft reset is a stop and the rearm has its own topic:** `cmd/soft_reset` holds the machine and resets it, but no longer clears an alarm or a door that the controller already reports (the answer says `already_stopped`). The new `cmd/reset_rearm` clears it, only with `{"confirm": "REARM"}`, a READY cell, no E-STOP, the door closed and no global stop. `[gate] reset_in_alarm` gains `separate`, the new default; `allow` and `gated` keep the earlier behaviour. Tested with doubles; not run on a machine.
+
 ## [0.2.9]
 
 - **The status table of the README shows the exact test count as confirmed:** the table is regenerated from the recorded data, so the Tests line is green for a count that was collected and that a workflow runs. The README and its seven translations are regenerated.
