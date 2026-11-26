@@ -249,12 +249,13 @@ def parse_config(data: dict) -> ServiceConfig:
     idem = _table(data, "idempotency")
     _only(idem, {"path"}, "idempotency")
     stop_table = _table(data, "global_stop")
-    _only(stop_table, {"enabled", "topic", "strict"}, "global_stop")
+    _only(stop_table, {"enabled", "topic", "strict", "ready_key_file"}, "global_stop")
     try:
         global_stop = GlobalStopSettings(
             _kind(stop_table, "enabled", bool, "global_stop", False),
             _kind(stop_table, "topic", str, "global_stop", DEFAULT_TOPIC),
             _kind(stop_table, "strict", bool, "global_stop", False),
+            _kind(stop_table, "ready_key_file", str, "global_stop"),
         )
     except ValueError as error:
         raise ConfigError(f"global_stop.topic: {error}") from error
