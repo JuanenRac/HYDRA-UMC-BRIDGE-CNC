@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.3.0] - Signed global stop release, safer soft reset and port sharing
 
 - **A shared port holds the G-code sender by default while the cell is not safe:** with `[port_sharing]` on, `hold_sender_when` is now `unsafe` unless the configuration says `never`: the lines of the sender get `error:9` while the E-STOP is pressed, the door is open, the cell is `SAFE_STOP` or `FAULT`, or the global stop is active. Real-time bytes always pass. A deployment that does not share the port is not affected.
 - **The SDK is pinned to its 0.7.6 release:** the dependency line of `pyproject.toml` and the workflows name the tag `v0.7.6` instead of a commit. With a key file for the global stop, the shared guard of that release keeps the newest signed announcement it accepted on disk across restarts.
