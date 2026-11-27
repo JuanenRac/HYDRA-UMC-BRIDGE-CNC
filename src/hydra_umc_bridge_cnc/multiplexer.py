@@ -76,7 +76,7 @@ class PortSharingConfig:
     port: int = DEFAULT_PORT
     allow_remote: bool = False
     read_timeout_seconds: float = 1.0
-    hold_sender_when: str = "never"  # "never" (the default) or "unsafe": hold the G-code lines of the sender while the cell is not safe
+    hold_sender_when: str = "unsafe"  # "unsafe" (the default): hold the G-code lines of the sender while the cell is not safe; "never": let them all through
 
     def validate(self) -> None:
         if self.hold_sender_when not in ("never", "unsafe"):

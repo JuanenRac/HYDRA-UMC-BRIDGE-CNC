@@ -86,10 +86,12 @@ class ParseTests(unittest.TestCase):
             parse_config({"controller": {"kind": "linuxcnc"}, "port_sharing": {"enabled": True}})
         parse_config({"controller": {"kind": "linuxcnc"}})
 
-    def test_hold_sender_when_is_never_by_default_and_checked(self):
-        self.assertEqual(parse_config({"controller": {"kind": "linuxcnc"}}).port_sharing.hold_sender_when, "never")
-        config = parse_config({"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True, "hold_sender_when": "unsafe"}})
-        self.assertEqual(config.port_sharing.hold_sender_when, "unsafe")
+    def test_the_sender_is_held_by_default_and_the_word_is_checked(self):
+        self.assertEqual(parse_config({"controller": {"kind": "linuxcnc"}}).port_sharing.hold_sender_when, "unsafe")
+        shared = {"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True}}
+        self.assertEqual(parse_config(shared).port_sharing.hold_sender_when, "unsafe")
+        config = parse_config({"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True, "hold_sender_when": "never"}})
+        self.assertEqual(config.port_sharing.hold_sender_when, "never")
         with self.assertRaisesRegex(ConfigError, "hold_sender_when"):
             parse_config({"controller": {"kind": "grbl", "device": "/dev/ttyUSB0"}, "port_sharing": {"enabled": True, "hold_sender_when": "sometimes"}})
 

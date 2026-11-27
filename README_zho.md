@@ -179,7 +179,7 @@ flowchart LR
 | `HYDRA_MQTT_TLS_CA` | 无 | 签署代理证书的 CA 文件：连接使用 TLS 并验证证书 |
 | `HYDRA_MQTT_TLS` | 关闭 | `1` 启用 TLS，并用系统信任的 CA 验证 |
 | `HYDRA_MQTT_TLS_CERT` / `HYDRA_MQTT_TLS_KEY` | 无 | 用于要求双向 TLS 的代理的客户端证书及其密钥；两者都需要 |
-| `[port_sharing] hold_sender_when` | `never` | `unsafe` 时，只要急停被按下、门打开、单元处于 `SAFE_STOP` 或 `FAULT`，或全局停止生效，就对 G-code 发送端的行回答 `error:9`；实时字节始终放行，此时 `cmd/status` 带有 `held_sender_lines`，即服务启动以来被扣下的行数。仅可在配置文件中设置 |
+| `[port_sharing] hold_sender_when` | `unsafe` | `unsafe` 时，只要急停被按下、门打开、单元处于 `SAFE_STOP` 或 `FAULT`，或全局停止生效，就对 G-code 发送端的行回答 `error:9`；实时字节始终放行，此时 `cmd/status` 带有 `held_sender_lines`，即服务启动以来被扣下的行数。仅可在配置文件中设置。`never` 则放行所有行 |
 | `[gate] reset_in_alarm` | `allow` | `gated` 时，报警状态下的软复位仅在单元为 READY 且无全局停止时才发送，被扣下时应答会说明原因；机器运行或保持时的复位仍是停止，绝不扣下，来不及读取的状态也不会延迟它。Ctrl-X 在真实板上会清除哪些报警尚未试验。仅可在配置文件中设置 |
 
 控制器链路在代码中选择：对 LinuxCNC 或 CNCjs 向 `CncMqttBridge` 传入 `controller=`，否则桥接持有一个 GRBL 串口连接。持有期间没有 G 代码发送程序能使用该端口（见 `docs/BRIDGE_GUIDE.md` 的 “One serial port”）。

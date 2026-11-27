@@ -179,7 +179,7 @@ flowchart LR
 | `HYDRA_MQTT_TLS_CA` | なし | ブローカーの証明書に署名した CA のファイル。接続は TLS になり、証明書が検証されます |
 | `HYDRA_MQTT_TLS` | オフ | `1` で TLS を有効にし、システムの信頼する CA で検証します |
 | `HYDRA_MQTT_TLS_CERT` / `HYDRA_MQTT_TLS_KEY` | なし | 相互 TLS を求めるブローカー用のクライアント証明書とその鍵。両方が必要です |
-| `[port_sharing] hold_sender_when` | `never` | `unsafe` にすると、非常停止が押されている、ドアが開いている、セルが `SAFE_STOP` または `FAULT`、またはグローバル停止が有効な間、G-code 送信側の行に `error:9` を返します。リアルタイムバイトは常に通り、`cmd/status` には保留した行数 `held_sender_lines`（サービス開始以降）が付きます。設定ファイルでのみ指定できます |
+| `[port_sharing] hold_sender_when` | `unsafe` | `unsafe` にすると、非常停止が押されている、ドアが開いている、セルが `SAFE_STOP` または `FAULT`、またはグローバル停止が有効な間、G-code 送信側の行に `error:9` を返します。リアルタイムバイトは常に通り、`cmd/status` には保留した行数 `held_sender_lines`（サービス開始以降）が付きます。設定ファイルでのみ指定できます。`never` はすべての行を通します |
 | `[gate] reset_in_alarm` | `allow` | `gated` にすると、アラーム中のソフトリセットはセルが READY でグローバル停止がないときだけ送られ、保留した場合は応答に理由が付きます。機械が動作中または保持中のリセットは停止であり、保留されません。時間内に読めない状態でも遅延しません。実機のボードで Ctrl-X がどのアラームを解除するかは試していません。設定ファイルでのみ指定できます |
 
 コントローラー連携はコードで選びます。LinuxCNC や CNCjs には `CncMqttBridge` に `controller=` を渡し、それ以外ではブリッジが GRBL のシリアル接続を保持します。保持している間、G コード送信ソフトはそのポートを使えません（`docs/BRIDGE_GUIDE.md` の「One serial port」を参照）。

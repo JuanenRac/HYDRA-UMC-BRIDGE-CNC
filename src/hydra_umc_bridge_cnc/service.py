@@ -212,7 +212,7 @@ def parse_config(data: dict) -> ServiceConfig:
         _kind(sharing_table, "port", int, "port_sharing", DEFAULT_PORT),
         _kind(sharing_table, "allow_remote", bool, "port_sharing", False),
         _kind(sharing_table, "read_timeout_seconds", float, "port_sharing", 1.0),
-        _kind(sharing_table, "hold_sender_when", str, "port_sharing", "never"),
+        _kind(sharing_table, "hold_sender_when", str, "port_sharing", "unsafe"),
     )
     try:
         sharing.validate()
